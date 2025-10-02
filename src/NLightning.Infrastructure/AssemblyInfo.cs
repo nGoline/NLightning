@@ -5,5 +5,5 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("NLightning.Infrastructure.Bitcoin")]
 [assembly: InternalsVisibleTo("NLightning.Infrastructure.Tests")]
 [assembly: InternalsVisibleTo("NLightning.Integration.Tests")]
-[assembly: InternalsVisibleTo("NLightning.Node")]
+[assembly: InternalsVisibleTo("NLightning.Daemon")]
 [assembly: InternalsVisibleTo("NLightning.Tests.Utils")]
