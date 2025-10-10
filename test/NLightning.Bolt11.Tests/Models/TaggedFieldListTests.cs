@@ -320,7 +320,7 @@ public class TaggedFieldListTests
     public void Given_BitReaderReturningNoData_When_FromBitReaderCalled_Then_EmptyListReturned()
     {
         // Given
-        var bitReader = new BitReader([]); // defaults to HasMoreBits = false
+        var bitReader = BitReader([]); // defaults to HasMoreBits = false
         // When
         var list = TaggedFieldList.FromBitReader(bitReader, BitcoinNetwork.Mainnet);
 
