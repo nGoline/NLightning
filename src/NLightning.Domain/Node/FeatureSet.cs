@@ -1,10 +1,10 @@
 using System.Collections;
 using System.Runtime.Serialization;
 using System.Text;
-using NLightning.Domain.Utils.Interfaces;
 
 namespace NLightning.Domain.Node;
 
+using Domain.Utils.Interfaces;
 using Enums;
 
 /// <summary>

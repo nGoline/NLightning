@@ -21,6 +21,7 @@ public readonly struct Hash : IEquatable<Hash>
     public static implicit operator byte[](Hash hash) => hash._value;
 
     public static implicit operator ReadOnlyMemory<byte>(Hash hash) => hash._value;
+    public static implicit operator ReadOnlySpan<byte>(Hash hash) => hash._value;
 
     public override string ToString() => Convert.ToHexString(_value).ToLowerInvariant();
 
@@ -49,5 +50,15 @@ public readonly struct Hash : IEquatable<Hash>
     public override int GetHashCode()
     {
         return _value.GetByteArrayHashCode();
+    }
+
+    public static bool operator ==(Hash left, Hash right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(Hash left, Hash right)
+    {
+        return !(left == right);
     }
 }

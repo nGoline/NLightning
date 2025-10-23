@@ -11,10 +11,11 @@ public static class ClientUtils
         Console.WriteLine("Options:");
         Console.WriteLine("  --network, -n <network>    Network to use (mainnet, testnet, regtest) [default: mainnet]");
         Console.WriteLine("  --cookie, -c <path>        Path to cookie file");
+        Console.WriteLine("  --help, -h, -?             Show this help message");
         Console.WriteLine();
         Console.WriteLine("Commands:");
         Console.WriteLine("  node-info | info           Get node information via IPC");
-        Console.WriteLine("  --help, -h, -?             Show this help message");
+        Console.WriteLine("  connect <node>             Connect to a peer node");
         Console.WriteLine();
         Console.WriteLine("Environment Variables:");
         Console.WriteLine("  NLTG_NETWORK               Network to use");

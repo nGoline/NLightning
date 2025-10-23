@@ -19,22 +19,37 @@ public static class CommandLineHelper
     {
         for (var i = 0; i < args.Length; i++)
         {
-            if (args[i].StartsWith("-n")
-             || args[i].StartsWith("--network")
-             || args[i].StartsWith("-c")
-             || args[i].StartsWith("--cookie"))
+            if (IsOption(args[i]))
             {
                 i++;
                 continue;
             }
 
-            if (args[i].StartsWith('-') || args[i].StartsWith("--"))
-                continue;
-
             return args[i].ToLowerInvariant();
         }
 
         return null;
+    }
+
+    public static string[] GetCommandArguments(string command, string[] args)
+    {
+        var cmdArgs = new List<string>();
+        var cmdFound = false;
+
+        for (var i = 0; i < args.Length; i++)
+        {
+            if (!cmdFound)
+            {
+                if (args[i].Equals(command, StringComparison.OrdinalIgnoreCase))
+                    cmdFound = true;
+
+                continue;
+            }
+
+            cmdArgs.Add(args[i]);
+        }
+
+        return cmdArgs.ToArray();
     }
 
     public static string GetNetwork(string[] args)
@@ -72,4 +87,9 @@ public static class CommandLineHelper
 
         return network;
     }
+
+    private static bool IsOption(string arg) => arg.StartsWith("-n")
+                                             || arg.StartsWith("--network")
+                                             || arg.StartsWith("-c")
+                                             || arg.StartsWith("--cookie");
 }

@@ -68,13 +68,14 @@ public class PeerDbRepository : BaseDbRepository<PeerEntity>, IPeerDbRepository
             NodeId = peerModel.NodeId,
             Host = peerModel.Host,
             Port = peerModel.Port,
+            Type = peerModel.Type,
             LastSeenAt = peerModel.LastSeenAt
         };
     }
 
     private static PeerModel MapEntityToDomain(PeerEntity peerEntity)
     {
-        return new PeerModel(peerEntity.NodeId, peerEntity.Host, peerEntity.Port)
+        return new PeerModel(peerEntity.NodeId, peerEntity.Host, peerEntity.Port, peerEntity.Type)
         {
             LastSeenAt = peerEntity.LastSeenAt
         };

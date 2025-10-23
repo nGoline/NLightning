@@ -1,9 +1,11 @@
 using MessagePack;
+using NLightning.Domain.Crypto.ValueObjects;
 
 namespace NLightning.Daemon.Handlers;
 
 using Interfaces;
 using Transport.Ipc;
+using Transport.Ipc.Responses;
 
 public sealed class NodeInfoIpcHandler : IIpcCommandHandler
 {
@@ -19,7 +21,16 @@ public sealed class NodeInfoIpcHandler : IIpcCommandHandler
     public async Task<IpcEnvelope> HandleAsync(IpcEnvelope envelope, CancellationToken ct)
     {
         var resp = await _query.QueryAsync(ct);
-        var payload = MessagePackSerializer.Serialize(resp, cancellationToken: ct);
+        var ipcResp = new NodeInfoIpcResponse
+        {
+            Network = resp.Network,
+            BestBlockHash = new Hash(Convert.FromHexString(resp.BestBlockHash)),
+            BestBlockHeight = resp.BestBlockHeight,
+            BestBlockTime = resp.BestBlockTime,
+            Implementation = resp.Implementation,
+            Version = resp.Version
+        };
+        var payload = MessagePackSerializer.Serialize(ipcResp, cancellationToken: ct);
         return new IpcEnvelope
         {
             Version = envelope.Version,

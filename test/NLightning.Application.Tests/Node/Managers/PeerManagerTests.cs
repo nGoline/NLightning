@@ -42,6 +42,7 @@ public class PeerManagerTests
 
     private const string ExpectedHost = "127.0.0.1";
     private const int ExpectedPort = 9735;
+    private const string ExpectedType = "IPv4";
 
     public PeerManagerTests()
     {
@@ -50,7 +51,7 @@ public class PeerManagerTests
         _mockPeerService.SetupGet(p => p.Features).Returns(new FeatureOptions());
 
         // Set up the mock peer model
-        _mockPeerModel = new PeerModel(_compactPubKey, ExpectedHost, ExpectedPort)
+        _mockPeerModel = new PeerModel(_compactPubKey, ExpectedHost, ExpectedPort, ExpectedType)
         {
             LastSeenAt = DateTime.UtcNow
         };

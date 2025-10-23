@@ -1,3 +1,4 @@
+using MessagePack;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -12,6 +13,7 @@ using NLightning.Domain.Protocol.ValueObjects;
 using NLightning.Infrastructure.Bitcoin.Managers;
 using NLightning.Infrastructure.Bitcoin.Options;
 using NLightning.Infrastructure.Bitcoin.Wallet;
+using NLightning.Transport.Ipc.MessagePack;
 using Serilog;
 
 try
@@ -128,6 +130,9 @@ try
         // The parent process exits immediately after starting the daemon
         return 0;
     }
+
+    // Register the default formatter for MessagePackSerializer
+    MessagePackSerializer.DefaultOptions = NLightningMessagePackOptions.Options;
 
     Log.Information("Starting NLTG...");
 

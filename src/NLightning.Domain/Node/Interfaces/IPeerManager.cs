@@ -1,4 +1,5 @@
 using NLightning.Domain.Crypto.ValueObjects;
+using NLightning.Domain.Node.Models;
 using NLightning.Domain.Node.ValueObjects;
 
 namespace NLightning.Domain.Node.Interfaces;
@@ -26,7 +27,7 @@ public interface IPeerManager
     /// </summary>
     /// <param name="peerAddressInfo">The peer address to connect to.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task ConnectToPeerAsync(PeerAddressInfo peerAddressInfo);
+    Task<PeerModel> ConnectToPeerAsync(PeerAddressInfo peerAddressInfo);
 
     /// <summary>
     /// Disconnects a peer.

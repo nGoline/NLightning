@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -60,7 +61,7 @@ public sealed class PeerManager : IPeerManager
         var peers = await uow.GetPeersForStartupAsync();
         foreach (var peer in peers)
         {
-            await ConnectToPeerAsync(peer.PeerAddressInfo, uow);
+            _ = await ConnectToPeerAsync(peer.PeerAddressInfo, uow);
             if (!_peers.TryGetValue(peer.NodeId, out _))
             {
                 _logger.LogWarning("Unable to connect to peer {PeerId} on startup", peer.NodeId);
@@ -115,14 +116,16 @@ public sealed class PeerManager : IPeerManager
 
     /// <inheritdoc />
     /// <exception cref="ConnectionException">Thrown when the connection to the peer fails.</exception>
-    public async Task ConnectToPeerAsync(PeerAddressInfo peerAddressInfo)
+    public async Task<PeerModel> ConnectToPeerAsync(PeerAddressInfo peerAddressInfo)
     {
         using var scope = _serviceProvider.CreateScope();
         using var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-        await ConnectToPeerAsync(peerAddressInfo, uow);
+        var peer = await ConnectToPeerAsync(peerAddressInfo, uow);
 
         await uow.SaveChangesAsync();
+
+        return peer;
     }
 
     /// <inheritdoc />
@@ -145,7 +148,7 @@ public sealed class PeerManager : IPeerManager
         }
     }
 
-    private async Task ConnectToPeerAsync(PeerAddressInfo peerAddressInfo, IUnitOfWork uow)
+    private async Task<PeerModel> ConnectToPeerAsync(PeerAddressInfo peerAddressInfo, IUnitOfWork uow)
     {
         // Connect to the peer
         var connectedPeer = await _tcpService.ConnectToPeerAsync(peerAddressInfo);
@@ -164,7 +167,8 @@ public sealed class PeerManager : IPeerManager
             port = peerService.PreferredPort.Value;
         }
 
-        var peer = new PeerModel(connectedPeer.CompactPubKey, host, port)
+        var peer = new PeerModel(connectedPeer.CompactPubKey, host, port,
+                                 connectedPeer.TcpClient.Client.ProtocolType == ProtocolType.IPv6 ? "IPv6" : "IPv4")
         {
             LastSeenAt = DateTime.UtcNow
         };
@@ -172,7 +176,9 @@ public sealed class PeerManager : IPeerManager
 
         _peers.Add(connectedPeer.CompactPubKey, peer);
 
-        uow.PeerDbRepository.AddOrUpdateAsync(peer).GetAwaiter().GetResult();
+        await uow.PeerDbRepository.AddOrUpdateAsync(peer);
+
+        return peer;
     }
 
     private void HandleNewPeerConnected(object? _, NewPeerConnectedEventArgs args)
@@ -186,7 +192,8 @@ public sealed class PeerManager : IPeerManager
 
             _logger.LogTrace("PeerService created for peer {PeerPubKey}", peerService.PeerPubKey);
 
-            var peer = new PeerModel(peerService.PeerPubKey, args.Host, args.Port)
+            var peer = new PeerModel(peerService.PeerPubKey, args.Host, args.Port,
+                                     args.TcpClient.Client.ProtocolType == ProtocolType.IPv6 ? "IPv6" : "IPv4")
             {
                 LastSeenAt = DateTime.UtcNow
             };

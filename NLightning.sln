@@ -124,7 +124,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NLightning.Client", "src\NL
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NLightning.Daemon.Plugins", "src\NLightning.Daemon.Plugins\NLightning.Daemon.Plugins.csproj", "{0756C587-913D-41B0-9745-20760612FD41}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NLightning.Transport.Ipc", "src\NLightning.Transport.Ipc\NLightning.Transport.Ipc.csproj", "{7C2E2B7B-0C22-4B31-8E1E-6C5E2A2B5E1C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NLightning.Transport.Ipc", "src\NLightning.Transport.Ipc\NLightning.Transport.Ipc.csproj", "{A3C18FCE-8C13-4B2F-BD9E-82131750C716}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -404,6 +404,18 @@ Global
 		{0756C587-913D-41B0-9745-20760612FD41}.Debug.Native|Any CPU.Build.0 = Debug|Any CPU
 		{0756C587-913D-41B0-9745-20760612FD41}.Debug.Wasm|Any CPU.ActiveCfg = Debug|Any CPU
 		{0756C587-913D-41B0-9745-20760612FD41}.Debug.Wasm|Any CPU.Build.0 = Debug|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Release.Native|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Release.Native|Any CPU.Build.0 = Debug|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Release.Wasm|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Release.Wasm|Any CPU.Build.0 = Debug|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Debug.Native|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Debug.Native|Any CPU.Build.0 = Debug|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Debug.Wasm|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716}.Debug.Wasm|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -444,6 +456,6 @@ Global
 		{5DC7356B-99D1-44BD-A134-66D1E111D764} = {123D0631-533C-447F-B7DA-D1D37E5E64BF}
 		{46962F7F-95FB-484C-89DE-0684D03C7845} = {123D0631-533C-447F-B7DA-D1D37E5E64BF}
 		{0756C587-913D-41B0-9745-20760612FD41} = {123D0631-533C-447F-B7DA-D1D37E5E64BF}
-		{7C2E2B7B-0C22-4B31-8E1E-6C5E2A2B5E1C} = {123D0631-533C-447F-B7DA-D1D37E5E64BF}
+		{A3C18FCE-8C13-4B2F-BD9E-82131750C716} = {123D0631-533C-447F-B7DA-D1D37E5E64BF}
 	EndGlobalSection
 EndGlobal

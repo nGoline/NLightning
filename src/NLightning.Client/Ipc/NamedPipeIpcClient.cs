@@ -1,20 +1,23 @@
 using System.Buffers;
 using System.IO.Pipes;
 using MessagePack;
-using NLightning.Daemon.Contracts.Control;
+using NLightning.Domain.Node.ValueObjects;
 
 namespace NLightning.Client.Ipc;
 
 using Daemon.Contracts;
+using Daemon.Contracts.Control;
 using Transport.Ipc;
+using Transport.Ipc.Requests;
+using Transport.Ipc.Responses;
 
 public sealed class NamedPipeIpcClient : IControlClient, IAsyncDisposable
 {
     private readonly string _namedPipeFilePath;
     private readonly string _cookieFilePath;
-    private readonly string? _server;
+    private readonly string _server;
 
-    public NamedPipeIpcClient(string namedPipeFilePath, string cookieFilePath, string? server = ".")
+    public NamedPipeIpcClient(string namedPipeFilePath, string cookieFilePath, string server = ".")
     {
         _namedPipeFilePath = namedPipeFilePath;
         _cookieFilePath = cookieFilePath;
@@ -23,7 +26,7 @@ public sealed class NamedPipeIpcClient : IControlClient, IAsyncDisposable
 
     public async Task<NodeInfoResponse> GetNodeInfoAsync(CancellationToken ct = default)
     {
-        var req = new NodeInfoRequest();
+        var req = new NodeInfoIpcRequest();
         var payload = MessagePackSerializer.Serialize(req, cancellationToken: ct);
         var env = new IpcEnvelope
         {
@@ -38,17 +41,38 @@ public sealed class NamedPipeIpcClient : IControlClient, IAsyncDisposable
         var respEnv = await SendAsync(env, ct);
         if (respEnv.Kind != 2)
         {
-            var transport =
+            var ipcResponse =
                 MessagePackSerializer.Deserialize<NodeInfoIpcResponse>(respEnv.Payload, cancellationToken: ct);
-            return new NodeInfoResponse
-            {
-                Network = transport.Network,
-                BestBlockHash = transport.BestBlockHash,
-                BestBlockHeight = transport.BestBlockHeight,
-                BestBlockTime = transport.BestBlockTime,
-                Implementation = transport.Implementation,
-                Version = transport.Version
-            };
+            return ipcResponse.ToContractResponse();
+        }
+
+        var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
+        throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
+    }
+
+    public async Task<ConnectPeerResponse> ConnectPeerAsync(string address, CancellationToken ct = default)
+    {
+        var req = new ConnectPeerIpcRequest
+        {
+            Address = new PeerAddressInfo(address)
+        };
+        var payload = MessagePackSerializer.Serialize(req, cancellationToken: ct);
+        var env = new IpcEnvelope
+        {
+            Version = 1,
+            Command = NodeIpcCommand.ConnectPeer,
+            CorrelationId = Guid.NewGuid(),
+            AuthToken = await GetAuthTokenAsync(ct),
+            Payload = payload,
+            Kind = 0
+        };
+
+        var respEnv = await SendAsync(env, ct);
+        if (respEnv.Kind != 2)
+        {
+            var ipcResponse =
+                MessagePackSerializer.Deserialize<ConnectPeerIpcResponse>(respEnv.Payload, cancellationToken: ct);
+            return ipcResponse.ToContractResponse();
         }
 
         var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);

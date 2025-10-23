@@ -34,6 +34,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NLightning.Application\NLightning.Application.csproj"/>
+    <ProjectReference Include="..\NLightning.Client\NLightning.Client.csproj"/>
     <ProjectReference Include="..\NLightning.Daemon.Plugins\NLightning.Daemon.Plugins.csproj"/>
     <ProjectReference Include="..\NLightning.Infrastructure.Repositories\NLightning.Infrastructure.Repositories.csproj"/>
     <ProjectReference Include="..\NLightning.Infrastructure.Bitcoin\NLightning.Infrastructure.Bitcoin.csproj"/>
@@ -43,7 +44,6 @@
     <ProjectReference Include="..\NLightning.Infrastructure.Serialization\NLightning.Infrastructure.Serialization.csproj"/>
     <ProjectReference Include="..\NLightning.Infrastructure\NLightning.Infrastructure.csproj"/>
     <ProjectReference Include="..\NLightning.Daemon.Contracts\NLightning.Daemon.Contracts.csproj"/>
-    <ProjectReference Include="..\NLightning.Transport.Ipc\NLightning.Transport.Ipc.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

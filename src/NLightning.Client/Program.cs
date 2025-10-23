@@ -1,8 +1,13 @@
+using MessagePack;
 using NLightning.Client.Ipc;
+using NLightning.Client.Printers;
 using NLightning.Client.Utils;
-using NLightning.Daemon.Contracts.Control;
 using NLightning.Daemon.Contracts.Helpers;
 using NLightning.Daemon.Contracts.Utilities;
+using NLightning.Transport.Ipc.MessagePack;
+
+// Register the default formatter for MessagePackSerializer
+MessagePackSerializer.DefaultOptions = NLightningMessagePackOptions.Options;
 
 var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
@@ -28,12 +33,21 @@ try
 
     await using var client = new NamedPipeIpcClient(namedPipeFilePath, cookieFilePath);
 
+    var commandArgs = CommandLineHelper.GetCommandArguments(cmd, args);
+
     switch (cmd)
     {
-        case "node-info":
         case "info":
+        case "node-info":
             var info = await client.GetNodeInfoAsync(cts.Token);
-            PrintNodeInfo(info);
+            new NodeInfoPrinter().Print(info);
+            break;
+        case "connect":
+        case "connect-peer":
+            if (commandArgs.Length == 0)
+                Console.Error.WriteLine("No arguments specified.");
+            var response = await client.ConnectPeerAsync(commandArgs[0], cts.Token);
+            new ConnectPeerPrinter().Print(response);
             break;
         default:
             Console.Error.WriteLine($"Unknown command: {cmd}");
@@ -49,15 +63,3 @@ catch (Exception ex)
 }
 
 return 0;
-
-static void PrintNodeInfo(NodeInfoResponse info)
-{
-    Console.WriteLine("Node Information:");
-    Console.WriteLine($"  Network: {info.Network}");
-    Console.WriteLine($"  Best Block Height: {info.BestBlockHeight}");
-    Console.WriteLine($"  Best Block Hash:   {info.BestBlockHash}");
-    if (info.BestBlockTime is not null)
-        Console.WriteLine($"  Best Block Time:   {info.BestBlockTime:O}");
-    Console.WriteLine($"  Implementation:    {info.Implementation}");
-    Console.WriteLine($"  Version:           {info.Version}");
-}

@@ -20,6 +20,7 @@ public static class PeerEntityConfiguration
             // Set required props
             entity.Property(e => e.Host).IsRequired();
             entity.Property(e => e.Port).IsRequired();
+            entity.Property(e => e.Type).IsRequired();
             entity.Property(e => e.LastSeenAt).IsRequired();
 
             // Required byte[] properties

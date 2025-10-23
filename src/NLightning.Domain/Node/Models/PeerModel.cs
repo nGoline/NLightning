@@ -16,7 +16,18 @@ public class PeerModel
     public CompactPubKey NodeId { get; }
     public string Host { get; }
     public uint Port { get; }
+    public string Type { get; }
     public DateTime LastSeenAt { get; set; }
+
+    public FeatureSet Features
+    {
+        get
+        {
+            return _peerService is null
+                       ? throw new NullReferenceException($"{nameof(PeerModel)}.{nameof(Features)} was null")
+                       : _peerService.Features.GetNodeFeatures();
+        }
+    }
 
     public PeerAddressInfo PeerAddressInfo
     {
@@ -30,11 +41,12 @@ public class PeerModel
 
     public ICollection<ChannelModel>? Channels { get; set; }
 
-    public PeerModel(CompactPubKey nodeId, string host, uint port)
+    public PeerModel(CompactPubKey nodeId, string host, uint port, string type)
     {
         NodeId = nodeId;
         Host = host;
         Port = port;
+        Type = type;
     }
 
     public bool TryGetPeerService([MaybeNullWhen(false)] out IPeerService peerService)
