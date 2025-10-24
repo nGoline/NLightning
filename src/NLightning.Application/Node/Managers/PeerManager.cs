@@ -1,7 +1,6 @@
 using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NLightning.Domain.Node.Constants;
 
 namespace NLightning.Application.Node.Managers;
 
@@ -10,6 +9,7 @@ using Domain.Channels.Events;
 using Domain.Channels.Interfaces;
 using Domain.Crypto.ValueObjects;
 using Domain.Exceptions;
+using Domain.Node.Constants;
 using Domain.Node.Events;
 using Domain.Node.Interfaces;
 using Domain.Node.Models;
@@ -17,6 +17,7 @@ using Domain.Node.ValueObjects;
 using Domain.Persistence.Interfaces;
 using Domain.Protocol.Constants;
 using Domain.Protocol.Interfaces;
+using Infrastructure.Protocol.Models;
 using Infrastructure.Transport.Events;
 using Infrastructure.Transport.Interfaces;
 
@@ -117,6 +118,7 @@ public sealed class PeerManager : IPeerManager
 
     /// <inheritdoc />
     /// <exception cref="ConnectionException">Thrown when the connection to the peer fails.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the connection to the peer already exists.</exception>
     public async Task<PeerModel> ConnectToPeerAsync(PeerAddressInfo peerAddressInfo)
     {
         using var scope = _serviceProvider.CreateScope();
@@ -149,10 +151,24 @@ public sealed class PeerManager : IPeerManager
         }
     }
 
+    public List<PeerModel> ListPeers()
+    {
+        return _peers.Values.ToList();
+    }
+
     private async Task<PeerModel> ConnectToPeerAsync(PeerAddressInfo peerAddressInfo, IUnitOfWork uow)
     {
+        // Convert and validate the address
+        var peerAddress = new PeerAddress(peerAddressInfo.Address);
+
+        // Check if we're already connected to the peer
+        if (_peers.ContainsKey(peerAddress.PubKey))
+        {
+            throw new InvalidOperationException($"Already connected to peer {peerAddress.PubKey}");
+        }
+
         // Connect to the peer
-        var connectedPeer = await _tcpService.ConnectToPeerAsync(peerAddressInfo);
+        var connectedPeer = await _tcpService.ConnectToPeerAsync(peerAddress);
 
         var peerService = await _peerServiceFactory.CreateConnectedPeerAsync(connectedPeer.CompactPubKey,
                                                                              connectedPeer.TcpClient);
@@ -211,12 +227,15 @@ public sealed class PeerManager : IPeerManager
             };
             peer.SetPeerService(peerService);
 
-            // Get a context to save the peer to the database
-            using var scope = _serviceProvider.CreateScope();
-            using var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            if (preferredHost != "127.0.0.1")
+            {
+                // Get a context to save the peer to the database
+                using var scope = _serviceProvider.CreateScope();
+                using var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-            uow.PeerDbRepository.AddOrUpdateAsync(peer);
-            uow.SaveChanges();
+                uow.PeerDbRepository.AddOrUpdateAsync(peer);
+                uow.SaveChanges();
+            }
 
             _peers.Add(peerService.PeerPubKey, peer);
         }

@@ -1,17 +1,15 @@
 using System.Buffers;
 using System.IO.Pipes;
 using MessagePack;
-using NLightning.Domain.Node.ValueObjects;
 
 namespace NLightning.Client.Ipc;
 
-using Daemon.Contracts;
-using Daemon.Contracts.Control;
+using Domain.Node.ValueObjects;
 using Transport.Ipc;
 using Transport.Ipc.Requests;
 using Transport.Ipc.Responses;
 
-public sealed class NamedPipeIpcClient : IControlClient, IAsyncDisposable
+public sealed class NamedPipeIpcClient : IAsyncDisposable
 {
     private readonly string _namedPipeFilePath;
     private readonly string _cookieFilePath;
@@ -24,7 +22,7 @@ public sealed class NamedPipeIpcClient : IControlClient, IAsyncDisposable
         _server = server;
     }
 
-    public async Task<NodeInfoResponse> GetNodeInfoAsync(CancellationToken ct = default)
+    public async Task<NodeInfoIpcResponse> GetNodeInfoAsync(CancellationToken ct = default)
     {
         var req = new NodeInfoIpcRequest();
         var payload = MessagePackSerializer.Serialize(req, cancellationToken: ct);
@@ -39,18 +37,16 @@ public sealed class NamedPipeIpcClient : IControlClient, IAsyncDisposable
         };
 
         var respEnv = await SendAsync(env, ct);
-        if (respEnv.Kind != 2)
+        if (respEnv.Kind != IpcEnvelopeKind.Error)
         {
-            var ipcResponse =
-                MessagePackSerializer.Deserialize<NodeInfoIpcResponse>(respEnv.Payload, cancellationToken: ct);
-            return ipcResponse.ToContractResponse();
+            return MessagePackSerializer.Deserialize<NodeInfoIpcResponse>(respEnv.Payload, cancellationToken: ct);
         }
 
         var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
         throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
     }
 
-    public async Task<ConnectPeerResponse> ConnectPeerAsync(string address, CancellationToken ct = default)
+    public async Task<ConnectPeerIpcResponse> ConnectPeerAsync(string address, CancellationToken ct = default)
     {
         var req = new ConnectPeerIpcRequest
         {
@@ -68,11 +64,33 @@ public sealed class NamedPipeIpcClient : IControlClient, IAsyncDisposable
         };
 
         var respEnv = await SendAsync(env, ct);
-        if (respEnv.Kind != 2)
+        if (respEnv.Kind == IpcEnvelopeKind.Error)
         {
-            var ipcResponse =
-                MessagePackSerializer.Deserialize<ConnectPeerIpcResponse>(respEnv.Payload, cancellationToken: ct);
-            return ipcResponse.ToContractResponse();
+            return MessagePackSerializer.Deserialize<ConnectPeerIpcResponse>(respEnv.Payload, cancellationToken: ct);
+        }
+
+        var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
+        throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
+    }
+
+    public async Task<ListPeersIpcResponse> ListPeersAsync(CancellationToken ct = default)
+    {
+        var req = new ListPeersIpcRequest();
+        var payload = MessagePackSerializer.Serialize(req, cancellationToken: ct);
+        var env = new IpcEnvelope
+        {
+            Version = 1,
+            Command = NodeIpcCommand.ListPeers,
+            CorrelationId = Guid.NewGuid(),
+            AuthToken = await GetAuthTokenAsync(ct),
+            Payload = payload,
+            Kind = IpcEnvelopeKind.Request
+        };
+
+        var respEnv = await SendAsync(env, ct);
+        if (respEnv.Kind != IpcEnvelopeKind.Error)
+        {
+            return MessagePackSerializer.Deserialize<ListPeersIpcResponse>(respEnv.Payload, cancellationToken: ct);
         }
 
         var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);

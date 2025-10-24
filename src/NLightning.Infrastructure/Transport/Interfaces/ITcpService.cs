@@ -1,9 +1,8 @@
-using NLightning.Domain.Node.ValueObjects;
-using NLightning.Infrastructure.Node.ValueObjects;
-
 namespace NLightning.Infrastructure.Transport.Interfaces;
 
 using Events;
+using Node.ValueObjects;
+using Protocol.Models;
 
 public interface ITcpService
 {
@@ -34,5 +33,5 @@ public interface ITcpService
     /// </summary>
     /// <param name="peerAddressInfo">The address information of the peer to connect to.</param>
     /// <returns>A task representing the asynchronous operation. The result contains a <see cref="ConnectedPeer"/> object representing the connected peer.</returns>
-    Task<ConnectedPeer> ConnectToPeerAsync(PeerAddressInfo peerAddressInfo);
+    Task<ConnectedPeer> ConnectToPeerAsync(PeerAddress peerAddress);
 }

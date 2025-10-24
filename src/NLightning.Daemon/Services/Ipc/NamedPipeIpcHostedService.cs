@@ -1,15 +1,16 @@
 using System.IO.Pipes;
-using MessagePack;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NLightning.Daemon.Services.Ipc.Factories;
 
 namespace NLightning.Daemon.Services.Ipc;
 
 using Contracts.Utilities;
 using Domain.Node.Options;
 using Interfaces;
-using NLightning.Transport.Ipc;
+using Transport.Ipc;
+using Transport.Ipc.Constants;
 
 /// <summary>
 /// Hosted service that listens to on a named pipe and processes IPC requests using injected components.
@@ -73,7 +74,8 @@ public sealed class NamedPipeIpcHostedService : BackgroundService
 
             if (!await _authenticator.ValidateAsync(request.AuthToken, ct))
             {
-                var err = Error(request, "auth_failed", "Authentication failed.");
+                var err = IpcErrorFactory.CreateErrorEnvelope(request, ErrorCodes.AuthenticationFailure,
+                                                              "Authentication failed.");
                 await _framing.WriteAsync(stream, err, ct);
                 return;
             }
@@ -87,8 +89,8 @@ public sealed class NamedPipeIpcHostedService : BackgroundService
             try
             {
                 // Try to write a generic error if we still can read an envelope
-                var env = new IpcEnvelope { Version = 1, CorrelationId = Guid.NewGuid(), Kind = 2 };
-                var err = Error(env, "server_error", ex.Message);
+                var env = new IpcEnvelope { Version = 1, CorrelationId = Guid.NewGuid(), Kind = IpcEnvelopeKind.Error };
+                var err = IpcErrorFactory.CreateErrorEnvelope(env, ErrorCodes.ServerError, ex.Message);
                 await _framing.WriteAsync(stream, err, ct);
             }
             catch
@@ -112,9 +114,7 @@ public sealed class NamedPipeIpcHostedService : BackgroundService
         {
             var dir = Path.GetDirectoryName(_cookiePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            {
                 Directory.CreateDirectory(dir);
-            }
 
             if (!File.Exists(_cookiePath))
             {
@@ -127,18 +127,5 @@ public sealed class NamedPipeIpcHostedService : BackgroundService
             _logger.LogError(ex, "Failed to ensure IPC cookie exists at {Path}", _cookiePath);
             throw;
         }
-    }
-
-    private static IpcEnvelope Error(IpcEnvelope request, string code, string message)
-    {
-        var payload = MessagePackSerializer.Serialize(new IpcError { Code = code, Message = message });
-        return new IpcEnvelope
-        {
-            Version = request.Version,
-            Command = request.Command,
-            CorrelationId = request.CorrelationId,
-            Kind = 2,
-            Payload = payload
-        };
     }
 }

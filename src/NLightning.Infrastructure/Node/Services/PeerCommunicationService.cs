@@ -81,7 +81,7 @@ public class PeerCommunicationService : IPeerCommunicationService
             if (!task.IsCanceled && !_isInitialized)
             {
                 RaiseException(
-                    new ConnectionException($"Peer {PeerCompactPubKey} did not send init message after timeout"));
+                    new ConnectionException($"Peer {PeerCompactPubKey} did not send an init message before timeout"));
             }
         });
 

@@ -20,5 +20,5 @@ public sealed class IpcEnvelope
     [Key(4)] public byte[] Payload { get; set; } = Array.Empty<byte>();
 
     // 0 = request, 1 = response, 2 = error
-    [Key(5)] public byte Kind { get; init; }
+    [Key(5)] public IpcEnvelopeKind Kind { get; init; }
 }

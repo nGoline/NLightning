@@ -46,7 +46,7 @@ public sealed class IpcRequestRouter : IIpcRequestRouter
             Version = request.Version,
             Command = request.Command,
             CorrelationId = request.CorrelationId,
-            Kind = 2,
+            Kind = IpcEnvelopeKind.Error,
             Payload = payload
         };
     }

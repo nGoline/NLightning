@@ -1,10 +1,10 @@
-using NLightning.Daemon.Contracts.Control;
-
 namespace NLightning.Client.Printers;
 
-public sealed class ConnectPeerPrinter : IPrinter<ConnectPeerResponse>
+using Transport.Ipc.Responses;
+
+public sealed class ConnectPeerPrinter : IPrinter<ConnectPeerIpcResponse>
 {
-    public void Print(ConnectPeerResponse item)
+    public void Print(ConnectPeerIpcResponse item)
     {
         Console.WriteLine("Connected to Peer:");
         Console.WriteLine($"  Id:           {item.Id}");

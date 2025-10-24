@@ -55,7 +55,8 @@ public static class NodeServiceExtensions
             services.AddSingleton<IIpcRequestRouter, IpcRequestRouter>();
             services.AddSingleton<INodeInfoQueryService, NodeInfoQueryService>();
             services.AddSingleton<IIpcCommandHandler, NodeInfoIpcHandler>();
-            services.AddSingleton<IIpcCommandHandler, ConnectIpcHandler>();
+            services.AddSingleton<IIpcCommandHandler, ConnectPeerIpcHandler>();
+            services.AddSingleton<IIpcCommandHandler, ListPeersIpcHandler>();
             services.AddSingleton<IIpcAuthenticator>(sp =>
             {
                 var nodeOptions = sp.GetRequiredService<IOptions<NodeOptions>>().Value;

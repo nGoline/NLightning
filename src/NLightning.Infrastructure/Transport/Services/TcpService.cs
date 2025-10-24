@@ -3,7 +3,6 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NLightning.Domain.Exceptions;
-using NLightning.Domain.Node.ValueObjects;
 using NLightning.Infrastructure.Node.ValueObjects;
 using NLightning.Infrastructure.Protocol.Models;
 
@@ -95,10 +94,8 @@ public class TcpService : ITcpService
 
     /// <inheritdoc />
     /// <exception cref="ConnectionException">Thrown when the connection to the peer fails.</exception>
-    public async Task<ConnectedPeer> ConnectToPeerAsync(PeerAddressInfo peerAddressInfo)
+    public async Task<ConnectedPeer> ConnectToPeerAsync(PeerAddress peerAddress)
     {
-        var peerAddress = new PeerAddress(peerAddressInfo.Address);
-
         var tcpClient = new TcpClient();
         try
         {

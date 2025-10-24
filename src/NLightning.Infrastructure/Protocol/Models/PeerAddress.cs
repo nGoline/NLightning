@@ -9,7 +9,7 @@ using NLightning.Domain.Node.ValueObjects;
 /// <summary>
 /// Represents a peer address.
 /// </summary>
-public sealed partial class PeerAddress
+public sealed partial class PeerAddress : IEquatable<PeerAddress>
 {
     [GeneratedRegex(@"\d+")]
     private static partial Regex OnlyDigitsRegex();
@@ -116,5 +116,26 @@ public sealed partial class PeerAddress
     public override string ToString()
     {
         return $"{PubKey}@{Host}:{Port}";
+    }
+
+    public bool Equals(PeerAddress? other)
+    {
+        if (other is null)
+            return false;
+
+        if (ReferenceEquals(this, other))
+            return true;
+
+        return PubKey.Equals(other.PubKey) && Host.Equals(other.Host) && Port == other.Port;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return ReferenceEquals(this, obj) || obj is PeerAddress other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(PubKey, Host, Port);
     }
 }

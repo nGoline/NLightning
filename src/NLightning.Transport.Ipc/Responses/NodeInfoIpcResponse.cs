@@ -2,7 +2,6 @@ using MessagePack;
 
 namespace NLightning.Transport.Ipc.Responses;
 
-using Daemon.Contracts.Control;
 using Domain.Crypto.ValueObjects;
 using Domain.Protocol.ValueObjects;
 
@@ -18,17 +17,4 @@ public sealed class NodeInfoIpcResponse
     [Key(3)] public DateTimeOffset? BestBlockTime { get; init; }
     [Key(4)] public string? Implementation { get; set; } = "NLightning";
     [Key(5)] public string? Version { get; init; }
-
-    public NodeInfoResponse ToContractResponse()
-    {
-        return new NodeInfoResponse
-        {
-            Network = Network,
-            BestBlockHash = BestBlockHash.ToString(),
-            BestBlockHeight = BestBlockHeight,
-            BestBlockTime = BestBlockTime,
-            Implementation = Implementation,
-            Version = Version
-        };
-    }
 }

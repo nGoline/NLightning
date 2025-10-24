@@ -46,8 +46,13 @@ try
         case "connect-peer":
             if (commandArgs.Length == 0)
                 Console.Error.WriteLine("No arguments specified.");
-            var response = await client.ConnectPeerAsync(commandArgs[0], cts.Token);
-            new ConnectPeerPrinter().Print(response);
+            var connect = await client.ConnectPeerAsync(commandArgs[0], cts.Token);
+            new ConnectPeerPrinter().Print(connect);
+            break;
+        case "listpeers":
+        case "list-peers":
+            var listPeers = await client.ListPeersAsync(cts.Token);
+            new ListPeersPrinter().Print(listPeers);
             break;
         default:
             Console.Error.WriteLine($"Unknown command: {cmd}");

@@ -2,6 +2,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
+using NLightning.Infrastructure.Protocol.Models;
 using NLightning.Tests.Utils.Mocks;
 
 namespace NLightning.Application.Tests.Node.Managers;
@@ -94,11 +95,12 @@ public class PeerManagerTests
                                           _mockPeerServiceFactory.Object, _mockTcpService.Object, _fakeServiceProvider);
 
         var peerAddressInfo = new PeerAddressInfo($"{_compactPubKey}@127.0.0.1:9735");
+        var peerAddress = new PeerAddress(peerAddressInfo);
 
         // Mock the TCP service to return a connected peer
         var mockTcpClient = new Mock<TcpClient>();
         var mockConnectedPeer = new ConnectedPeer(_compactPubKey, ExpectedHost, ExpectedPort, mockTcpClient.Object);
-        _mockTcpService.Setup(t => t.ConnectToPeerAsync(peerAddressInfo))
+        _mockTcpService.Setup(t => t.ConnectToPeerAsync(peerAddress))
                        .ReturnsAsync(mockConnectedPeer);
 
         // Setup PeerDbRepository.AddOrUpdateAsync to match the pattern
@@ -113,7 +115,7 @@ public class PeerManagerTests
         Assert.True(peers.ContainsKey(_compactPubKey));
 
         // Verify the TCP service was called
-        _mockTcpService.Verify(t => t.ConnectToPeerAsync(peerAddressInfo), Times.Once);
+        _mockTcpService.Verify(t => t.ConnectToPeerAsync(peerAddress), Times.Once);
 
         // Verify peer service factory was called
         _mockPeerServiceFactory.Verify(f => f.CreateConnectedPeerAsync(_compactPubKey, mockTcpClient.Object),
@@ -138,11 +140,12 @@ public class PeerManagerTests
                                           _mockPeerServiceFactory.Object, _mockTcpService.Object, _fakeServiceProvider);
 
         var peerAddressInfo = new PeerAddressInfo($"{_compactPubKey}@127.0.0.1:9735");
+        var peerAddress = new PeerAddress(peerAddressInfo);
         var expectedError =
             new ConnectionException("Failed to connect to peer 127.0.0.1:9735");
 
         // Mock TCP service to throw a connection exception
-        _mockTcpService.Setup(t => t.ConnectToPeerAsync(peerAddressInfo))
+        _mockTcpService.Setup(t => t.ConnectToPeerAsync(peerAddress))
                        .ThrowsAsync(expectedError);
 
         // When & Then

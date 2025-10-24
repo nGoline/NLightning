@@ -9,4 +9,5 @@ public enum NodeIpcCommand
     Unknown = 0,
     NodeInfo = 1,
     ConnectPeer = 2,
+    ListPeers = 3,
 }

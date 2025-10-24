@@ -34,4 +34,6 @@ public interface IPeerManager
     /// </summary>
     /// <param name="compactPubKey" cref="CompactPubKey">CompactPubKey of the peer</param>
     void DisconnectPeer(CompactPubKey compactPubKey);
+
+    List<PeerModel> ListPeers();
 }

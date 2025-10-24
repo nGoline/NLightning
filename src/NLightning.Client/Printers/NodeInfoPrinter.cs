@@ -1,13 +1,13 @@
-using NLightning.Daemon.Contracts.Control;
-
 namespace NLightning.Client.Printers;
 
-public sealed class NodeInfoPrinter : IPrinter<NodeInfoResponse>
+using NLightning.Transport.Ipc.Responses;
+
+public sealed class NodeInfoPrinter : IPrinter<NodeInfoIpcResponse>
 {
-    public void Print(NodeInfoResponse item)
+    public void Print(NodeInfoIpcResponse item)
     {
         Console.WriteLine("Node Information:");
-        Console.WriteLine($"  Network: {item.Network}");
+        Console.WriteLine($"  Network:           {item.Network}");
         Console.WriteLine($"  Best Block Height: {item.BestBlockHeight}");
         Console.WriteLine($"  Best Block Hash:   {item.BestBlockHash}");
         if (item.BestBlockTime is not null)
