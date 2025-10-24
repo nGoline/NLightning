@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NLightning.Domain.Node.Constants;
 
 namespace NLightning.Application.Node.Managers;
 
@@ -158,16 +159,17 @@ public sealed class PeerManager : IPeerManager
         peerService.OnDisconnect += HandlePeerDisconnection;
         peerService.OnChannelMessageReceived += HandlePeerChannelMessage;
 
-        // Check if the peer wants us to use a different host and port
-        var host = connectedPeer.Host;
-        var port = connectedPeer.Port; // Default port for Lightning Network
-        if (peerService.PreferredHost is not null && peerService.PreferredPort.HasValue)
-        {
-            host = peerService.PreferredHost;
-            port = peerService.PreferredPort.Value;
-        }
+        var preferredHost = connectedPeer.Host;
+        var preferredPort = connectedPeer.Port;
 
-        var peer = new PeerModel(connectedPeer.CompactPubKey, host, port,
+        // Check if the node has set it's preferred address
+        if (peerService.PreferredHost is not null)
+            preferredHost = peerService.PreferredHost;
+
+        if (peerService.PreferredPort is not null)
+            preferredPort = peerService.PreferredPort.Value;
+
+        var peer = new PeerModel(connectedPeer.CompactPubKey, preferredHost, preferredPort,
                                  connectedPeer.TcpClient.Client.ProtocolType == ProtocolType.IPv6 ? "IPv6" : "IPv4")
         {
             LastSeenAt = DateTime.UtcNow
@@ -192,12 +194,29 @@ public sealed class PeerManager : IPeerManager
 
             _logger.LogTrace("PeerService created for peer {PeerPubKey}", peerService.PeerPubKey);
 
-            var peer = new PeerModel(peerService.PeerPubKey, args.Host, args.Port,
+            var preferredHost = args.Host;
+            var preferredPort = NodeConstants.DefaultPort;
+
+            // Check if the node has set it's preferred address
+            if (peerService.PreferredHost is not null)
+                preferredHost = peerService.PreferredHost;
+
+            if (peerService.PreferredPort is not null)
+                preferredPort = peerService.PreferredPort.Value;
+
+            var peer = new PeerModel(peerService.PeerPubKey, preferredHost, preferredPort,
                                      args.TcpClient.Client.ProtocolType == ProtocolType.IPv6 ? "IPv6" : "IPv4")
             {
                 LastSeenAt = DateTime.UtcNow
             };
             peer.SetPeerService(peerService);
+
+            // Get a context to save the peer to the database
+            using var scope = _serviceProvider.CreateScope();
+            using var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            uow.PeerDbRepository.AddOrUpdateAsync(peer);
+            uow.SaveChanges();
 
             _peers.Add(peerService.PeerPubKey, peer);
         }
