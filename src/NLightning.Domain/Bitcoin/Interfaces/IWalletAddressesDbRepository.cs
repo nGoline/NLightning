@@ -1,6 +1,7 @@
+using NLightning.Domain.Bitcoin.Wallet.Models;
+
 namespace NLightning.Domain.Bitcoin.Interfaces;
 
-using Addresses.Models;
 using Enums;
 
 public interface IWalletAddressesDbRepository

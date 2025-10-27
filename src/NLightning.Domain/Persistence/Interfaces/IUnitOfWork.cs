@@ -1,3 +1,4 @@
+using NLightning.Domain.Bitcoin.Wallet.Models;
 using NLightning.Domain.Node.Models;
 
 namespace NLightning.Domain.Persistence.Interfaces;
@@ -12,6 +13,7 @@ public interface IUnitOfWork : IDisposable
     IBlockchainStateDbRepository BlockchainStateDbRepository { get; }
     IWatchedTransactionDbRepository WatchedTransactionDbRepository { get; }
     IWalletAddressesDbRepository WalletAddressesDbRepository { get; }
+    IUtxoDbRepository UtxoDbRepository { get; }
 
     // Chanel repositories
     IChannelConfigDbRepository ChannelConfigDbRepository { get; }
@@ -23,6 +25,7 @@ public interface IUnitOfWork : IDisposable
     IPeerDbRepository PeerDbRepository { get; }
 
     Task<ICollection<PeerModel>> GetPeersForStartupAsync();
+    void AddUtxo(UtxoModel utxoModel);
 
     void SaveChanges();
     Task SaveChangesAsync();

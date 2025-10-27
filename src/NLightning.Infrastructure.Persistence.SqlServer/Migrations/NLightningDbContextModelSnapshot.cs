@@ -43,6 +43,25 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
                     b.ToTable("BlockchainStates");
                 });
 
+            modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.UtxoEntity", b =>
+                {
+                    b.Property<byte[]>("TransactionId")
+                        .HasColumnType("varbinary(32)");
+
+                    b.Property<long>("Index")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("AmountSats")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("BlockHeight")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("TransactionId", "Index");
+
+                    b.ToTable("Utxos");
+                });
+
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", b =>
                 {
                     b.Property<long>("Index")

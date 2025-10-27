@@ -1,10 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using NLightning.Domain.Channels.Interfaces;
-using NLightning.Infrastructure.Repositories.Memory;
 
 namespace NLightning.Infrastructure.Repositories;
 
+using Domain.Bitcoin.Interfaces;
+using Domain.Channels.Interfaces;
 using Domain.Persistence.Interfaces;
+using Memory;
 
 /// <summary>
 /// Extension methods for setting up Persistence infrastructure services in an IServiceCollection.
@@ -23,6 +24,7 @@ public static class DependencyInjection
 
         // Register memory repositories
         services.AddSingleton<IChannelMemoryRepository, ChannelMemoryRepository>();
+        services.AddSingleton<IUtxoMemoryRepository, UtxoMemoryRepository>();
 
         return services;
     }

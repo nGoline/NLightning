@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
 {
     [DbContext(typeof(NLightningDbContext))]
-    [Migration("20251027154736_AddPeerTypeAndWalletAddresses")]
-    partial class AddPeerTypeAndWalletAddresses
+    [Migration("20251027190251_AddPeerTypeWalletAddressesAndUtxos")]
+    partial class AddPeerTypeWalletAddressesAndUtxos
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -49,6 +49,30 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
                         .HasName("pk_blockchain_states");
 
                     b.ToTable("blockchain_states", (string)null);
+                });
+
+            modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.UtxoEntity", b =>
+                {
+                    b.Property<byte[]>("TransactionId")
+                        .HasColumnType("bytea")
+                        .HasColumnName("transaction_id");
+
+                    b.Property<long>("Index")
+                        .HasColumnType("bigint")
+                        .HasColumnName("index");
+
+                    b.Property<long>("AmountSats")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_sats");
+
+                    b.Property<long>("BlockHeight")
+                        .HasColumnType("bigint")
+                        .HasColumnName("block_height");
+
+                    b.HasKey("TransactionId", "Index")
+                        .HasName("pk_utxos");
+
+                    b.ToTable("utxos", (string)null);
                 });
 
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", b =>

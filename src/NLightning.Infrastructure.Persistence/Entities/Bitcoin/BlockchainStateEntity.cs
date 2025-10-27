@@ -10,9 +10,7 @@ public class BlockchainStateEntity
     public required DateTime LastProcessedAt { get; set; }
 
     // Default constructor for EF Core
-    internal BlockchainStateEntity()
-    {
-    }
+    internal BlockchainStateEntity() { }
 
     public override bool Equals(object? obj)
     {

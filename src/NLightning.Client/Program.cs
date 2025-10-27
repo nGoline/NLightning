@@ -59,6 +59,11 @@ try
             var addresses = await client.GetAddressAsync(commandArgs[0], cts.Token);
             new GetAddressPrinter().Print(addresses);
             break;
+        case "walletbalance":
+        case "wallet-balance":
+            var balance = await client.GetWalletBalance(cts.Token);
+            new WalletBalancePrinter().Print(balance);
+            break;
         default:
             Console.Error.WriteLine($"Unknown command: {cmd}");
             ClientUtils.ShowUsage();

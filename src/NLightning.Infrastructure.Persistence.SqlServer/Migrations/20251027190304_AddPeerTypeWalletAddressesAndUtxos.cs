@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
 {
     /// <inheritdoc />
-    public partial class AddPeerTypeAndWalletAddresses : Migration
+    public partial class AddPeerTypeWalletAddressesAndUtxos : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,6 +16,20 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
                 type: "nvarchar(max)",
                 nullable: false,
                 defaultValue: "");
+
+            migrationBuilder.CreateTable(
+                name: "Utxos",
+                columns: table => new
+                {
+                    TransactionId = table.Column<byte[]>(type: "varbinary(32)", nullable: false),
+                    Index = table.Column<long>(type: "bigint", nullable: false),
+                    AmountSats = table.Column<long>(type: "bigint", nullable: false),
+                    BlockHeight = table.Column<long>(type: "bigint", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Utxos", x => new { x.TransactionId, x.Index });
+                });
 
             migrationBuilder.CreateTable(
                 name: "WalletAddresses",
@@ -36,6 +50,9 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "Utxos");
+
             migrationBuilder.DropTable(
                 name: "WalletAddresses");
 

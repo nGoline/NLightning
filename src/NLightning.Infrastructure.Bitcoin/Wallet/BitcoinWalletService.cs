@@ -1,13 +1,13 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NBitcoin;
-using NLightning.Domain.Node.Options;
 
 namespace NLightning.Infrastructure.Bitcoin.Wallet;
 
-using Domain.Bitcoin.Addresses.Models;
 using Domain.Bitcoin.Enums;
 using Domain.Bitcoin.ValueObjects;
+using Domain.Bitcoin.Wallet.Models;
+using Domain.Node.Options;
 using Domain.Persistence.Interfaces;
 using Domain.Protocol.Interfaces;
 using Interfaces;

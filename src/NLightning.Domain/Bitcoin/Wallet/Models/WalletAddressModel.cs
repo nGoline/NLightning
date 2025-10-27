@@ -1,6 +1,6 @@
-namespace NLightning.Domain.Bitcoin.Addresses.Models;
+using NLightning.Domain.Bitcoin.Enums;
 
-using Enums;
+namespace NLightning.Domain.Bitcoin.Wallet.Models;
 
 public sealed class WalletAddressModel
 {

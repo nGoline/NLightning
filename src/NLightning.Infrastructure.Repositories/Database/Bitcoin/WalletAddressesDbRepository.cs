@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using NLightning.Domain.Bitcoin.Wallet.Models;
 
 namespace NLightning.Infrastructure.Repositories.Database.Bitcoin;
 
-using Domain.Bitcoin.Addresses.Models;
 using Domain.Bitcoin.Enums;
 using Domain.Bitcoin.Interfaces;
 using Persistence.Contexts;

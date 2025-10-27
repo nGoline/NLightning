@@ -135,6 +135,30 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
         throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
     }
 
+    public async Task<WalletBalanceIpcResponse> GetWalletBalance(CancellationToken ct)
+    {
+        var req = new WalletBalanceIpcRequest();
+        var payload = MessagePackSerializer.Serialize(req, cancellationToken: ct);
+        var env = new IpcEnvelope
+        {
+            Version = 1,
+            Command = NodeIpcCommand.WalletBalance,
+            CorrelationId = Guid.NewGuid(),
+            AuthToken = await GetAuthTokenAsync(ct),
+            Payload = payload,
+            Kind = 0
+        };
+
+        var respEnv = await SendAsync(env, ct);
+        if (respEnv.Kind != IpcEnvelopeKind.Error)
+        {
+            return MessagePackSerializer.Deserialize<WalletBalanceIpcResponse>(respEnv.Payload, cancellationToken: ct);
+        }
+
+        var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
+        throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
+    }
+
     private async Task<IpcEnvelope> SendAsync(IpcEnvelope envelope, CancellationToken ct)
     {
         await using var client =

@@ -1,13 +1,14 @@
 using MessagePack;
 using MessagePack.Formatters;
 using MessagePack.Resolvers;
-using NLightning.Domain.Node;
-using NLightning.Domain.Node.ValueObjects;
-using NLightning.Domain.Protocol.ValueObjects;
 
 namespace NLightning.Transport.Ipc.MessagePack;
 
 using Domain.Crypto.ValueObjects;
+using Domain.Money;
+using Domain.Node;
+using Domain.Node.ValueObjects;
+using Domain.Protocol.ValueObjects;
 using Formatters;
 
 public class NLightningFormatterResolver : IFormatterResolver
@@ -23,6 +24,7 @@ public class NLightningFormatterResolver : IFormatterResolver
         _formatters[typeof(PeerAddressInfo)] = new PeerAddressInfoFormatter();
         _formatters[typeof(CompactPubKey)] = new CompactPubKeyFormatter();
         _formatters[typeof(FeatureSet)] = new FeatureSetFormatter();
+        _formatters[typeof(LightningMoney)] = new LightningMoneyFormatter();
     }
 
     public IMessagePackFormatter<T>? GetFormatter<T>()
