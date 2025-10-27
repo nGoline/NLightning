@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
 {
     [DbContext(typeof(NLightningDbContext))]
-    [Migration("20251023145101_AddPeerType")]
-    partial class AddPeerType
+    [Migration("20251027154736_AddPeerTypeAndWalletAddresses")]
+    partial class AddPeerTypeAndWalletAddresses
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -49,6 +49,37 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
                         .HasName("pk_blockchain_states");
 
                     b.ToTable("blockchain_states", (string)null);
+                });
+
+            modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", b =>
+                {
+                    b.Property<long>("Index")
+                        .HasColumnType("bigint")
+                        .HasColumnName("index");
+
+                    b.Property<bool>("IsChange")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_change");
+
+                    b.Property<byte>("AddressType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("address_type");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("address");
+
+                    b.Property<long>("UtxoQty")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("utxo_qty");
+
+                    b.HasKey("Index", "IsChange", "AddressType")
+                        .HasName("pk_wallet_addresses");
+
+                    b.ToTable("wallet_addresses", (string)null);
                 });
 
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WatchedTransactionEntity", b =>

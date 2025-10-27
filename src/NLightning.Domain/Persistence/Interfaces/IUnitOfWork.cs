@@ -11,6 +11,7 @@ public interface IUnitOfWork : IDisposable
     // Bitcoin repositories
     IBlockchainStateDbRepository BlockchainStateDbRepository { get; }
     IWatchedTransactionDbRepository WatchedTransactionDbRepository { get; }
+    IWalletAddressesDbRepository WalletAddressesDbRepository { get; }
 
     // Chanel repositories
     IChannelConfigDbRepository ChannelConfigDbRepository { get; }

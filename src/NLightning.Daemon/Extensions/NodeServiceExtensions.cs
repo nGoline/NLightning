@@ -50,13 +50,14 @@ public static class NodeServiceExtensions
             // Register the main daemon service
             services.AddHostedService<NltgDaemonService>();
 
-            // Register IPC server
+            // Register IPC server and handlers
             services.AddSingleton<IIpcFraming, LengthPrefixedIpcFraming>();
             services.AddSingleton<IIpcRequestRouter, IpcRequestRouter>();
             services.AddSingleton<INodeInfoQueryService, NodeInfoQueryService>();
             services.AddSingleton<IIpcCommandHandler, NodeInfoIpcHandler>();
             services.AddSingleton<IIpcCommandHandler, ConnectPeerIpcHandler>();
             services.AddSingleton<IIpcCommandHandler, ListPeersIpcHandler>();
+            services.AddSingleton<IIpcCommandHandler, GetAddressIpcHandler>();
             services.AddSingleton<IIpcAuthenticator>(sp =>
             {
                 var nodeOptions = sp.GetRequiredService<IOptions<NodeOptions>>().Value;

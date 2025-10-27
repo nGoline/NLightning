@@ -87,7 +87,7 @@ try
         {
             // Create logger for the wallet service using Serilog
             var loggerFactory = LoggerFactory.Create(b => b.AddSerilog(Log.Logger, dispose: false));
-            var walletLogger = loggerFactory.CreateLogger<BitcoinWalletService>();
+            var walletLogger = loggerFactory.CreateLogger<BitcoinChainService>();
 
             // Bind options from initialConfig
             var bitcoinOptions = initialConfig.GetSection("Bitcoin").Get<BitcoinOptions>()
@@ -97,7 +97,7 @@ try
                            ?? throw new InvalidOperationException("Node configuration section is missing or invalid.");
 
             // Instantiate the service
-            var bitcoinWalletService = new BitcoinWalletService(
+            var bitcoinWalletService = new BitcoinChainService(
                 Options.Create(bitcoinOptions),
                 walletLogger,
                 Options.Create(nodeOptions)

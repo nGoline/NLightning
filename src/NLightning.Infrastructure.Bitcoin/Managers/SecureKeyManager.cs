@@ -6,6 +6,7 @@ using NBitcoin;
 
 namespace NLightning.Infrastructure.Bitcoin.Managers;
 
+using Domain.Bitcoin.Constants;
 using Domain.Bitcoin.ValueObjects;
 using Domain.Crypto.Constants;
 using Domain.Crypto.ValueObjects;
@@ -32,15 +33,25 @@ public class SecureKeyManager : ISecureKeyManager, IDisposable
     private readonly string _filePath;
     private readonly object _lastUsedIndexLock = new();
     private readonly Network _network;
-    private readonly KeyPath _keyPath = new("m/6425'/0'/0'/0");
+    private readonly KeyPath _channelKeyPath = new(KeyConstants.ChannelKeyPathString);
+    private readonly KeyPath _depositP2TrKeyPath = new(KeyConstants.P2TrKeyPathString);
+    private readonly KeyPath _depositP2WpkhKeyPath = new(KeyConstants.P2WpkhKeyPathString);
 
     private uint _lastUsedIndex;
     private ulong _privateKeyLength;
     private IntPtr _securePrivateKeyPtr;
 
-    public BitcoinKeyPath KeyPath => _keyPath.ToBytes();
+    public BitcoinKeyPath ChannelKeyPath => _channelKeyPath.ToBytes();
+    public BitcoinKeyPath DepositP2TrKeyPath => _depositP2TrKeyPath.ToBytes();
+    public BitcoinKeyPath DepositP2WpkhKeyPath => _depositP2WpkhKeyPath.ToBytes();
 
-    public string OutputDescriptor { get; init; }
+    public string OutputChannelDescriptor { get; init; }
+    public string OutputDepositP2TrDescriptor { get; init; }
+
+    public string OutputDepositP2WshDescriptor { get; init; }
+    public string OutputChangeP2TrDescriptor { get; init; }
+
+    public string OutputChangeP2WshDescriptor { get; init; }
 
     public uint HeightOfBirth { get; init; }
 
@@ -75,7 +86,11 @@ public class SecureKeyManager : ISecureKeyManager, IDisposable
         var xpub = extKey.Neuter().ToString(_network);
         var fingerprint = extKey.GetPublicKey().GetHDFingerPrint();
 
-        OutputDescriptor = $"wpkh([{fingerprint}/{KeyPath}/*]{xpub}/0/*)";
+        OutputChannelDescriptor = $"wpkh([{fingerprint}/{ChannelKeyPath}/*]{xpub}/0/*)";
+        OutputDepositP2TrDescriptor = $"tr([{fingerprint}/{DepositP2TrKeyPath}]{xpub}/0/*)";
+        OutputChangeP2TrDescriptor = $"tr([{fingerprint}/{DepositP2TrKeyPath}]{xpub}/1/*)";
+        OutputDepositP2WshDescriptor = $"wpkh([{fingerprint}/{DepositP2WpkhKeyPath}]{xpub}/0/*)";
+        OutputChangeP2WshDescriptor = $"wpkh([{fingerprint}/{DepositP2WpkhKeyPath}]{xpub}/1/*)";
 
         // Securely wipe the original key from regular memory
         cryptoProvider.MemoryZero(Marshal.UnsafeAddrOfPinnedArrayElement(privateKey, 0), _privateKeyLength);
@@ -84,7 +99,7 @@ public class SecureKeyManager : ISecureKeyManager, IDisposable
         HeightOfBirth = heightOfBirth;
     }
 
-    public ExtPrivKey GetNextKey(out uint index)
+    public ExtPrivKey GetNextChannelKey(out uint index)
     {
         lock (_lastUsedIndexLock)
         {
@@ -94,9 +109,9 @@ public class SecureKeyManager : ISecureKeyManager, IDisposable
 
         // Derive the key at m/6425'/0'/0'/0/index
         var masterKey = GetMasterKey();
-        var derivedKey = masterKey.Derive(_keyPath.Derive(index));
+        var derivedKey = masterKey.Derive(_channelKeyPath.Derive(index));
 
-        _ = UpdateLastUsedIndexOnFile().ContinueWith(task =>
+        _ = UpdateLastUsedChannelIndexOnFile().ContinueWith(task =>
         {
             if (task.IsFaulted)
                 Console.Error.WriteLine($"Failed to update last used index on file: {task.Exception.Message}");
@@ -105,10 +120,22 @@ public class SecureKeyManager : ISecureKeyManager, IDisposable
         return derivedKey.ToBytes();
     }
 
-    public ExtPrivKey GetKeyAtIndex(uint index)
+    public ExtPrivKey GetChannelKeyAtIndex(uint index)
     {
         var masterKey = GetMasterKey();
-        return masterKey.Derive(_keyPath.Derive(index)).ToBytes();
+        return masterKey.Derive(_channelKeyPath.Derive(index)).ToBytes();
+    }
+
+    public ExtPrivKey GetDepositP2TrKeyAtIndex(uint index, bool isChange)
+    {
+        var masterKey = GetMasterKey();
+        return masterKey.Derive(_depositP2TrKeyPath.Derive(isChange ? "1" : "0")).Derive(index).ToBytes();
+    }
+
+    public ExtPrivKey GetDepositP2WpkhKeyAtIndex(uint index, bool isChange)
+    {
+        var masterKey = GetMasterKey();
+        return masterKey.Derive(_depositP2WpkhKeyPath.Derive(isChange ? "1" : "0")).Derive(index).ToBytes();
     }
 
     public CryptoKeyPair GetNodeKeyPair()
@@ -123,7 +150,7 @@ public class SecureKeyManager : ISecureKeyManager, IDisposable
         return masterKey.PrivateKey.PubKey.ToBytes();
     }
 
-    public async Task UpdateLastUsedIndexOnFile()
+    public async Task UpdateLastUsedChannelIndexOnFile()
     {
         var jsonString = await File.ReadAllTextAsync(_filePath);
         var data = JsonSerializer.Deserialize<KeyFileData>(jsonString)
@@ -160,7 +187,7 @@ public class SecureKeyManager : ISecureKeyManager, IDisposable
             {
                 Network = _network.ToString(),
                 LastUsedIndex = _lastUsedIndex,
-                Descriptor = OutputDescriptor,
+                Descriptor = OutputChannelDescriptor,
                 EncryptedExtKey = Convert.ToBase64String(cipherText),
                 HeightOfBirth = HeightOfBirth
             };
@@ -209,7 +236,7 @@ public class SecureKeyManager : ISecureKeyManager, IDisposable
         return new SecureKeyManager(extKey.PrivateKey.ToBytes(), expectedNetwork, filePath, data.HeightOfBirth)
         {
             _lastUsedIndex = data.LastUsedIndex,
-            OutputDescriptor = data.Descriptor
+            OutputChannelDescriptor = data.Descriptor
         };
     }
 

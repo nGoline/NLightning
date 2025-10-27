@@ -12,8 +12,8 @@ using NLightning.Infrastructure.Persistence.Contexts;
 namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
 {
     [DbContext(typeof(NLightningDbContext))]
-    [Migration("20251023145110_AddPeerType")]
-    partial class AddPeerType
+    [Migration("20251027154749_AddPeerTypeAndWalletAddresses")]
+    partial class AddPeerTypeAndWalletAddresses
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -44,6 +44,31 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("BlockchainStates");
+                });
+
+            modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", b =>
+                {
+                    b.Property<long>("Index")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsChange")
+                        .HasColumnType("bit");
+
+                    b.Property<byte>("AddressType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("UtxoQty")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.HasKey("Index", "IsChange", "AddressType");
+
+                    b.ToTable("WalletAddresses");
                 });
 
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WatchedTransactionEntity", b =>

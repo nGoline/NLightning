@@ -1,5 +1,6 @@
 namespace NLightning.Infrastructure.Bitcoin.Wallet.Interfaces;
 
+using Domain.Bitcoin.Addresses.Models;
 using Domain.Bitcoin.Events;
 using Domain.Bitcoin.ValueObjects;
 using Domain.Channels.ValueObjects;
@@ -7,6 +8,7 @@ using Domain.Channels.ValueObjects;
 public interface IBlockchainMonitor
 {
     Task WatchTransactionAsync(ChannelId channelId, TxId txId, uint requiredDepth);
+    void WatchBitcoinAddress(WalletAddressModel walletAddress);
     event EventHandler<NewBlockEventArgs> OnNewBlockDetected;
     event EventHandler<TransactionConfirmedEventArgs> OnTransactionConfirmed;
 

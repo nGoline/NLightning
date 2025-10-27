@@ -54,6 +54,11 @@ try
             var listPeers = await client.ListPeersAsync(cts.Token);
             new ListPeersPrinter().Print(listPeers);
             break;
+        case "getaddress":
+        case "get-address":
+            var addresses = await client.GetAddressAsync(commandArgs[0], cts.Token);
+            new GetAddressPrinter().Print(addresses);
+            break;
         default:
             Console.Error.WriteLine($"Unknown command: {cmd}");
             ClientUtils.ShowUsage();

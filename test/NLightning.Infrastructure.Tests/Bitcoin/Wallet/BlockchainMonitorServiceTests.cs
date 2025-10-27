@@ -17,7 +17,11 @@ using Infrastructure.Bitcoin.Wallet.Interfaces;
 
 public class BlockchainMonitorServiceTests
 {
-    private readonly Mock<IBitcoinWallet> _mockBitcoinWallet;
+    private readonly Mock<IOptions<BitcoinOptions>> _mockBitcoinOptions;
+    private readonly Mock<IBitcoinChainService> _mockBitcoinWallet;
+    private readonly Mock<ILogger<BlockchainMonitorService>> _mockLogger;
+    private readonly Mock<IOptions<Domain.Node.Options.NodeOptions>> _mockNodeOptions;
+    private readonly FakeServiceProvider _fakeServiceProvider;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IBlockchainStateDbRepository> _mockBlockchainStateRepository;
     private readonly Mock<IWatchedTransactionDbRepository> _mockWatchedTransactionRepository;
@@ -26,10 +30,9 @@ public class BlockchainMonitorServiceTests
 
     public BlockchainMonitorServiceTests()
     {
-        var mockBitcoinOptions =
-            // Set up mock dependencies
-            new Mock<IOptions<BitcoinOptions>>();
-        mockBitcoinOptions.Setup(x => x.Value).Returns(new BitcoinOptions
+        // Set up mock dependencies
+        _mockBitcoinOptions = new Mock<IOptions<BitcoinOptions>>();
+        _mockBitcoinOptions.Setup(x => x.Value).Returns(new BitcoinOptions
         {
             RpcEndpoint = "",
             RpcUser = "",
@@ -39,18 +42,18 @@ public class BlockchainMonitorServiceTests
             ZmqTxPort = 28333
         });
 
-        _mockBitcoinWallet = new Mock<IBitcoinWallet>();
-        var mockLogger = new Mock<ILogger<BlockchainMonitorService>>();
+        _mockBitcoinWallet = new Mock<IBitcoinChainService>();
+        _mockLogger = new Mock<ILogger<BlockchainMonitorService>>();
 
-        var mockNodeOptions = new Mock<IOptions<Domain.Node.Options.NodeOptions>>();
-        mockNodeOptions.Setup(x => x.Value).Returns(new Domain.Node.Options.NodeOptions
+        _mockNodeOptions = new Mock<IOptions<Domain.Node.Options.NodeOptions>>();
+        _mockNodeOptions.Setup(x => x.Value).Returns(new Domain.Node.Options.NodeOptions
         {
             BitcoinNetwork = "regtest"
         });
 
         _mockUnitOfWork = new Mock<IUnitOfWork>();
-        var fakeServiceProvider = new FakeServiceProvider();
-        fakeServiceProvider.AddService(typeof(IUnitOfWork), _mockUnitOfWork.Object);
+        _fakeServiceProvider = new FakeServiceProvider();
+        _fakeServiceProvider.AddService(typeof(IUnitOfWork), _mockUnitOfWork.Object);
         _mockBlockchainStateRepository = new Mock<IBlockchainStateDbRepository>();
         _mockWatchedTransactionRepository = new Mock<IWatchedTransactionDbRepository>();
 
@@ -60,11 +63,11 @@ public class BlockchainMonitorServiceTests
 
         // Create the service
         _service = new BlockchainMonitorService(
-            mockBitcoinOptions.Object,
+            _mockBitcoinOptions.Object,
             _mockBitcoinWallet.Object,
-            mockLogger.Object,
-            mockNodeOptions.Object,
-            fakeServiceProvider);
+            _mockLogger.Object,
+            _mockNodeOptions.Object,
+            _fakeServiceProvider);
     }
 
     [Fact]
@@ -87,7 +90,7 @@ public class BlockchainMonitorServiceTests
                           .ReturnsAsync(110u);
 
         _mockBitcoinWallet.Setup(x => x.GetBlockAsync(It.IsAny<uint>()))
-                          .ReturnsAsync(Consensus.Main.ConsensusFactory.CreateBlock());
+                          .ReturnsAsync(Consensus.RegTest.ConsensusFactory.CreateBlock());
 
         // Act
         await _service.StartAsync(0, CancellationToken.None);
@@ -114,7 +117,7 @@ public class BlockchainMonitorServiceTests
                           .ReturnsAsync(100u);
 
         _mockBitcoinWallet.Setup(x => x.GetBlockAsync(It.IsAny<uint>()))
-                          .ReturnsAsync(Consensus.Main.ConsensusFactory.CreateBlock());
+                          .ReturnsAsync(Consensus.RegTest.ConsensusFactory.CreateBlock());
 
         // Act
         await _service.StartAsync(0, CancellationToken.None);
@@ -137,9 +140,9 @@ public class BlockchainMonitorServiceTests
         // Assert
         _mockWatchedTransactionRepository.Verify(
             x => x.Add(
-                It.Is<WatchedTransactionModel>(t => t.ChannelId.Equals(channelId) &&
-                                                    t.TransactionId.Equals(txId) &&
-                                                    t.RequiredDepth == requiredDepth)),
+                It.Is<WatchedTransactionModel>(t => t.ChannelId.Equals(channelId)
+                                                 && t.TransactionId.Equals(txId)
+                                                 && t.RequiredDepth == requiredDepth)),
             Times.Once);
 
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
@@ -149,7 +152,7 @@ public class BlockchainMonitorServiceTests
     public async Task ProcessNewBlock_AddsMissingBlocksAndProcessesThem()
     {
         // Arrange
-        var currentBlockHeight = 110u;
+        const uint currentBlockHeight = 110u;
         var block = Consensus.Main.ConsensusFactory.CreateBlock();
 
         // Setup to simulate blockchain state at height 100
@@ -334,7 +337,7 @@ public class BlockchainMonitorServiceTests
                           .ReturnsAsync(100u);
 
         _mockBitcoinWallet.Setup(x => x.GetBlockAsync(It.IsAny<uint>()))
-                          .ReturnsAsync(Consensus.Main.ConsensusFactory.CreateBlock());
+                          .ReturnsAsync(Consensus.RegTest.ConsensusFactory.CreateBlock());
 
         // Act
         await _service.StartAsync(heightOfBirth, CancellationToken.None);
@@ -364,7 +367,7 @@ public class BlockchainMonitorServiceTests
                           .ReturnsAsync(110u);
 
         _mockBitcoinWallet.Setup(x => x.GetBlockAsync(It.IsAny<uint>()))
-                          .ReturnsAsync(Consensus.Main.ConsensusFactory.CreateBlock());
+                          .ReturnsAsync(Consensus.RegTest.ConsensusFactory.CreateBlock());
 
         // Act
         await _service.StartAsync(heightOfBirth, CancellationToken.None);
@@ -397,7 +400,7 @@ public class BlockchainMonitorServiceTests
                           .ReturnsAsync(55u); // The current height is higher than the height of birth
 
         _mockBitcoinWallet.Setup(x => x.GetBlockAsync(It.IsAny<uint>()))
-                          .ReturnsAsync(Consensus.Main.ConsensusFactory.CreateBlock());
+                          .ReturnsAsync(Consensus.RegTest.ConsensusFactory.CreateBlock());
 
         // Act
         await _service.StartAsync(heightOfBirth, CancellationToken.None);
@@ -433,7 +436,7 @@ public class BlockchainMonitorServiceTests
                           .ReturnsAsync(5u);
 
         _mockBitcoinWallet.Setup(x => x.GetBlockAsync(It.IsAny<uint>()))
-                          .ReturnsAsync(Consensus.Main.ConsensusFactory.CreateBlock());
+                          .ReturnsAsync(Consensus.RegTest.ConsensusFactory.CreateBlock());
 
         // Act
         await _service.StartAsync(heightOfBirth, CancellationToken.None);

@@ -10,4 +10,5 @@ public enum NodeIpcCommand
     NodeInfo = 1,
     ConnectPeer = 2,
     ListPeers = 3,
+    GetAddress = 4
 }

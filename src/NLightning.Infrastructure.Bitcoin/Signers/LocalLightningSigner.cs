@@ -51,7 +51,7 @@ public class LocalLightningSigner : ILightningSigner
     public uint CreateNewChannel(out ChannelBasepoints basepoints, out CompactPubKey firstPerCommitmentPoint)
     {
         // Generate a new key for this channel
-        var channelPrivExtKey = _secureKeyManager.GetNextKey(out var index);
+        var channelPrivExtKey = _secureKeyManager.GetNextChannelKey(out var index);
         var channelKey = ExtKey.CreateFromBytes(channelPrivExtKey);
 
         // Generate Lightning basepoints using proper BIP32 derivation paths
@@ -86,7 +86,7 @@ public class LocalLightningSigner : ILightningSigner
         _logger.LogTrace("Generating channel basepoints for key index {ChannelKeyIndex}", channelKeyIndex);
 
         // Recreate the basepoints from the channel key index
-        var channelExtKey = _secureKeyManager.GetKeyAtIndex(channelKeyIndex);
+        var channelExtKey = _secureKeyManager.GetChannelKeyAtIndex(channelKeyIndex);
         var channelKey = ExtKey.CreateFromBytes(channelExtKey);
 
         using var localFundingSecret = channelKey.Derive(FundingDerivationIndex, true).PrivateKey;
@@ -126,7 +126,7 @@ public class LocalLightningSigner : ILightningSigner
             channelKeyIndex, commitmentNumber);
 
         // Derive the per-commitment seed from the channel key
-        var channelExtKey = _secureKeyManager.GetKeyAtIndex(channelKeyIndex);
+        var channelExtKey = _secureKeyManager.GetChannelKeyAtIndex(channelKeyIndex);
         var channelKey = ExtKey.CreateFromBytes(channelExtKey);
         using var perCommitmentSeed = channelKey.Derive(5).PrivateKey;
 
@@ -162,7 +162,7 @@ public class LocalLightningSigner : ILightningSigner
             channelKeyIndex, commitmentNumber);
 
         // Derive the per-commitment seed from the channel key
-        var channelExtKey = _secureKeyManager.GetKeyAtIndex(channelKeyIndex);
+        var channelExtKey = _secureKeyManager.GetChannelKeyAtIndex(channelKeyIndex);
         var channelKey = ExtKey.CreateFromBytes(channelExtKey);
         using var perCommitmentSeed = channelKey.Derive(5).PrivateKey;
 
@@ -303,7 +303,7 @@ public class LocalLightningSigner : ILightningSigner
 
     protected virtual Key GenerateFundingPrivateKey(uint channelKeyIndex)
     {
-        var channelExtKey = _secureKeyManager.GetKeyAtIndex(channelKeyIndex);
+        var channelExtKey = _secureKeyManager.GetChannelKeyAtIndex(channelKeyIndex);
         var channelKey = ExtKey.CreateFromBytes(channelExtKey);
 
         return GenerateFundingPrivateKey(channelKey);

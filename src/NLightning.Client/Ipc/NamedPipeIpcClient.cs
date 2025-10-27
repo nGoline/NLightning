@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.IO.Pipes;
 using MessagePack;
+using NLightning.Domain.Bitcoin.Enums;
 
 namespace NLightning.Client.Ipc;
 
@@ -91,6 +92,43 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
         if (respEnv.Kind != IpcEnvelopeKind.Error)
         {
             return MessagePackSerializer.Deserialize<ListPeersIpcResponse>(respEnv.Payload, cancellationToken: ct);
+        }
+
+        var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
+        throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
+    }
+
+    public async Task<GetAddressIpcResponse> GetAddressAsync(string? addressTypeString, CancellationToken ct = default)
+    {
+        var addressType = AddressType.P2Tr;
+        if (!string.IsNullOrWhiteSpace(addressTypeString))
+        {
+            addressType = addressTypeString.ToLowerInvariant() switch
+            {
+                "p2tr" => AddressType.P2Tr,
+                "p2wpkh" => AddressType.P2Wpkh,
+                "all" => AddressType.P2Tr | AddressType.P2Wpkh,
+                _ => throw new ArgumentOutOfRangeException(nameof(addressTypeString), addressTypeString,
+                                                           "Address has to be `p2tr`, `p2wpkh`, or `all`.")
+            };
+        }
+
+        var req = new GetAddressIpcRequest { AddressType = addressType };
+        var payload = MessagePackSerializer.Serialize(req, cancellationToken: ct);
+        var env = new IpcEnvelope
+        {
+            Version = 1,
+            Command = NodeIpcCommand.GetAddress,
+            CorrelationId = Guid.NewGuid(),
+            AuthToken = await GetAuthTokenAsync(ct),
+            Payload = payload,
+            Kind = IpcEnvelopeKind.Request
+        };
+
+        var respEnv = await SendAsync(env, ct);
+        if (respEnv.Kind != IpcEnvelopeKind.Error)
+        {
+            return MessagePackSerializer.Deserialize<GetAddressIpcResponse>(respEnv.Payload, cancellationToken: ct);
         }
 
         var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);

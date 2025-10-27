@@ -22,6 +22,7 @@ public class UnitOfWork : IUnitOfWork
     // Bitcoin repositories
     private BlockchainStateDbRepository? _blockchainStateDbRepository;
     private WatchedTransactionDbRepository? _watchedTransactionDbRepository;
+    private WalletAddressesDbRepository? _walletAddressesDbRepository;
 
     // Channel repositories
     private ChannelConfigDbRepository? _channelConfigDbRepository;
@@ -37,6 +38,9 @@ public class UnitOfWork : IUnitOfWork
 
     public IWatchedTransactionDbRepository WatchedTransactionDbRepository =>
         _watchedTransactionDbRepository ??= new WatchedTransactionDbRepository(_context);
+
+    public IWalletAddressesDbRepository WalletAddressesDbRepository =>
+        _walletAddressesDbRepository ??= new WalletAddressesDbRepository(_context);
 
     public IChannelConfigDbRepository ChannelConfigDbRepository =>
         _channelConfigDbRepository ??= new ChannelConfigDbRepository(_context);

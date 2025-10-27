@@ -1,110 +1,75 @@
-using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NBitcoin;
-using NBitcoin.RPC;
 using NLightning.Domain.Node.Options;
-using NLightning.Infrastructure.Bitcoin.Options;
-using NLightning.Infrastructure.Bitcoin.Wallet.Interfaces;
 
 namespace NLightning.Infrastructure.Bitcoin.Wallet;
 
-public class BitcoinWalletService : IBitcoinWallet
-{
-    private readonly RPCClient _rpcClient;
-    private readonly ILogger<BitcoinWalletService> _logger;
+using Domain.Bitcoin.Addresses.Models;
+using Domain.Bitcoin.Enums;
+using Domain.Bitcoin.ValueObjects;
+using Domain.Persistence.Interfaces;
+using Domain.Protocol.Interfaces;
+using Interfaces;
 
-    public BitcoinWalletService(IOptions<BitcoinOptions> bitcoinOptions, ILogger<BitcoinWalletService> logger,
-                                IOptions<NodeOptions> nodeOptions)
+public class BitcoinWalletService : IBitcoinWalletService
+{
+    private readonly ILogger<BitcoinWalletService> _logger;
+    private readonly Network _network;
+    private readonly ISecureKeyManager _secureKeyManager;
+    private readonly IUnitOfWork _uow;
+
+    public BitcoinWalletService(ILogger<BitcoinWalletService> logger, IOptions<NodeOptions> nodeOptions,
+                                ISecureKeyManager secureKeyManager, IUnitOfWork uow)
     {
         _logger = logger;
-        var network = Network.GetNetwork(nodeOptions.Value.BitcoinNetwork) ?? Network.Main;
+        _secureKeyManager = secureKeyManager;
+        _uow = uow;
 
-        var rpcCredentials = new RPCCredentialString
-        {
-            UserPassword = new NetworkCredential(bitcoinOptions.Value.RpcUser, bitcoinOptions.Value.RpcPassword)
-        };
-
-        _rpcClient = new RPCClient(rpcCredentials, bitcoinOptions.Value.RpcEndpoint, network);
-        _rpcClient.GetBlockchainInfo();
+        _network = Network.GetNetwork(nodeOptions.Value.BitcoinNetwork) ?? Network.Main;
     }
 
-    public async Task<uint256> SendTransactionAsync(Transaction transaction)
+    public async Task<string> GetUnusedAddressAsync(AddressType addressType, bool isChange)
     {
-        try
-        {
-            _logger.LogInformation("Broadcasting transaction {TxId}", transaction.GetHash());
-            var result = await _rpcClient.SendRawTransactionAsync(transaction);
-            _logger.LogInformation("Successfully broadcast transaction {TxId}", result);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to broadcast transaction {TxId}", transaction.GetHash());
-            throw;
-        }
-    }
+        if ((int)addressType > 2)
+            throw new InvalidOperationException(
+                "You cannot use flags for this method. Please select only one address type.");
 
-    public async Task<Transaction?> GetTransactionAsync(uint256 txId)
-    {
-        try
-        {
-            return await _rpcClient.GetRawTransactionAsync(new uint256(txId), false);
-        }
-        catch (RPCException ex) when (ex.RPCCode == RPCErrorCode.RPC_INVALID_ADDRESS_OR_KEY)
-        {
-            return null; // Transaction not found
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get transaction {TxId}", txId);
-            throw;
-        }
-    }
+        // Find an unused address in the DB
+        var addressModel = await _uow.WalletAddressesDbRepository.GetUnusedAddressAsync(addressType, isChange);
 
-    public async Task<uint> GetCurrentBlockHeightAsync()
-    {
-        try
-        {
-            var blockCount = await _rpcClient.GetBlockCountAsync();
-            return (uint)blockCount;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get current block height");
-            throw;
-        }
-    }
+        if (addressModel is not null)
+            return addressModel.Address;
 
-    public async Task<Block?> GetBlockAsync(uint height)
-    {
-        try
-        {
-            var blockHash = await _rpcClient.GetBlockHashAsync((int)height);
-            return await _rpcClient.GetBlockAsync(blockHash);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get block at height {Height}", height);
-            throw;
-        }
-    }
+        // If there's none, get the last used index from db
+        var lastUsedIndex = await _uow.WalletAddressesDbRepository.GetLastUsedAddressIndex(addressType, isChange);
 
-    public async Task<uint> GetTransactionConfirmationsAsync(uint256 txId)
-    {
-        try
+        // Generate 10 new addresses
+        var addressList = new List<WalletAddressModel>(10);
+        for (var i = lastUsedIndex; i < lastUsedIndex + 10; i++)
         {
-            var txInfo = await _rpcClient.GetRawTransactionInfoAsync(new uint256(txId));
-            return txInfo.Confirmations;
+            ExtPrivKey extPrivKey;
+            if (addressType == AddressType.P2Tr)
+            {
+                extPrivKey = _secureKeyManager.GetDepositP2TrKeyAtIndex(i, isChange);
+                var extKey = ExtKey.CreateFromBytes(extPrivKey);
+                var address = extKey.Neuter().PubKey.GetAddress(ScriptPubKeyType.TaprootBIP86, _network);
+
+                addressList.Add(new WalletAddressModel(addressType, i, isChange, address.ToString()));
+            }
+            else
+            {
+                extPrivKey = _secureKeyManager.GetDepositP2WpkhKeyAtIndex(i, isChange);
+                var extKey = ExtKey.CreateFromBytes(extPrivKey);
+                var address = extKey.Neuter().PubKey.GetAddress(ScriptPubKeyType.Segwit, _network);
+
+                addressList.Add(new WalletAddressModel(addressType, i, isChange, address.ToString()));
+            }
         }
-        catch (RPCException ex) when (ex.RPCCode == RPCErrorCode.RPC_INVALID_ADDRESS_OR_KEY)
-        {
-            return 0; // Transaction not found
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get confirmations for transaction {TxId}", txId);
-            throw;
-        }
+
+        _uow.WalletAddressesDbRepository.AddRange(addressList);
+        await _uow.SaveChangesAsync();
+
+        return addressList[0].Address;
     }
 }

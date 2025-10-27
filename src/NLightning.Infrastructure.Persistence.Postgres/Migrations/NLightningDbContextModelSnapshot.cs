@@ -48,6 +48,37 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
                     b.ToTable("blockchain_states", (string)null);
                 });
 
+            modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", b =>
+                {
+                    b.Property<long>("Index")
+                        .HasColumnType("bigint")
+                        .HasColumnName("index");
+
+                    b.Property<bool>("IsChange")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_change");
+
+                    b.Property<byte>("AddressType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("address_type");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("address");
+
+                    b.Property<long>("UtxoQty")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("utxo_qty");
+
+                    b.HasKey("Index", "IsChange", "AddressType")
+                        .HasName("pk_wallet_addresses");
+
+                    b.ToTable("wallet_addresses", (string)null);
+                });
+
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WatchedTransactionEntity", b =>
                 {
                     b.Property<byte[]>("TransactionId")

@@ -25,7 +25,7 @@ public static class DependencyInjection
     public static IServiceCollection AddBitcoinInfrastructure(this IServiceCollection services)
     {
         // Register Singletons
-        services.AddSingleton<IBitcoinWallet, BitcoinWalletService>();
+        services.AddSingleton<IBitcoinChainService, BitcoinChainService>();
         services.AddSingleton<IBlockchainMonitor, BlockchainMonitorService>();
         services.AddSingleton<ICommitmentKeyDerivationService, CommitmentKeyDerivationService>();
         services.AddSingleton<ICommitmentTransactionBuilder, CommitmentTransactionBuilder>();
@@ -33,6 +33,9 @@ public static class DependencyInjection
         services.AddSingleton<IFundingOutputBuilder, FundingOutputBuilder>();
         services.AddSingleton<IKeyDerivationService, KeyDerivationService>();
         services.AddSingleton<ITlvConverterFactory, TlvConverterFactory>();
+
+        // Register Scoped Services
+        services.AddScoped<IBitcoinWalletService, BitcoinWalletService>();
 
         return services;
     }

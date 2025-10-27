@@ -2,7 +2,7 @@ using NBitcoin;
 
 namespace NLightning.Infrastructure.Bitcoin.Wallet.Interfaces;
 
-public interface IBitcoinWallet
+public interface IBitcoinChainService
 {
     Task<uint256> SendTransactionAsync(Transaction transaction);
     Task<Transaction?> GetTransactionAsync(uint256 txId);
