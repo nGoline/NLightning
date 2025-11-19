@@ -184,8 +184,8 @@ public sealed class OpenChannelClientHandler
         }
     }
 
-    private void HandleChannelMessage(ChannelMessageEventArgs args, ChannelId channelId,
-                                      TaskCompletionSource<OpenChannelClientResponse> tcs)
+    private void HandleChannelMessage(ChannelMessageEventArgs args, ChannelId _,
+                                      TaskCompletionSource<OpenChannelClientResponse> __)
     {
         if (args.Message.Type == MessageTypes.AcceptChannel)
         {

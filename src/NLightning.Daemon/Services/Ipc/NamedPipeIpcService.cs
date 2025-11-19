@@ -28,7 +28,7 @@ internal sealed class NamedPipeIpcService : INamedPipeIpcService
     private Task? _listenerTask;
 
     public NamedPipeIpcService(IIpcAuthenticator authenticator, string configPath, IIpcFraming framing,
-                               ILogger<NamedPipeIpcService> logger, IOptions<NodeOptions> nodeOptions,
+                               ILogger<NamedPipeIpcService> logger, IOptions<NodeOptions> _,
                                IIpcRequestRouter router)
     {
         _logger = logger;
