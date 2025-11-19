@@ -1,12 +1,10 @@
 using Microsoft.Extensions.Logging;
-using NLightning.Domain.Bitcoin.Transactions.Enums;
-using NLightning.Domain.Bitcoin.Transactions.Interfaces;
-using NLightning.Infrastructure.Bitcoin.Builders.Interfaces;
-using NLightning.Infrastructure.Bitcoin.Wallet.Interfaces;
 
 namespace NLightning.Application.Channels.Handlers;
 
 using Domain.Bitcoin.Interfaces;
+using Domain.Bitcoin.Transactions.Enums;
+using Domain.Bitcoin.Transactions.Interfaces;
 using Domain.Channels.Enums;
 using Domain.Channels.Interfaces;
 using Domain.Channels.Models;
@@ -16,6 +14,8 @@ using Domain.Node.Options;
 using Domain.Persistence.Interfaces;
 using Domain.Protocol.Interfaces;
 using Domain.Protocol.Messages;
+using Infrastructure.Bitcoin.Builders.Interfaces;
+using Infrastructure.Bitcoin.Wallet.Interfaces;
 using Interfaces;
 
 public class FundingCreatedMessageHandler : IChannelMessageHandler<FundingCreatedMessage>
@@ -95,15 +95,20 @@ public class FundingCreatedMessageHandler : IChannelMessageHandler<FundingCreate
         _lightningSigner.ValidateSignature(channel.ChannelId, payload.Signature, localUnsignedCommitmentTransaction);
 
         // Sign our remote commitment transaction
-        var ourSignature = _lightningSigner.SignTransaction(channel.ChannelId, remoteUnsignedCommitmentTransaction);
+        var ourSignature =
+            _lightningSigner.SignChannelTransaction(channel.ChannelId, remoteUnsignedCommitmentTransaction);
 
+        // Update the channel with the new signatures and the new state
+        channel.UpdateLastReceivedSignature(payload.Signature);
+        channel.UpdateLastSentSignature(ourSignature);
         channel.UpdateState(ChannelState.V1FundingSigned);
+
         // Save to the database
         await PersistChannelAsync(channel);
 
         // Create the funding signed message
         var fundingSignedMessage =
-            _messageFactory.CreatedFundingSignedMessage(channel.ChannelId, ourSignature);
+            _messageFactory.CreateFundingSignedMessage(channel.ChannelId, ourSignature);
 
         // Add the channel to the dictionary
         _channelMemoryRepository.AddChannel(channel);

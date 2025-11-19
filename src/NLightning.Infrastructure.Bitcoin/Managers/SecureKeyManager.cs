@@ -243,12 +243,9 @@ public class SecureKeyManager : ISecureKeyManager, IDisposable
     /// <summary>
     /// Gets the path for the Key file
     /// </summary>
-    public static string GetKeyFilePath(string network)
+    public static string GetKeyFilePath(string configPath)
     {
-        var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var networkDir = Path.Combine(homeDir, ".nltg", network);
-        Directory.CreateDirectory(networkDir); // Ensure directory exists
-        return Path.Combine(networkDir, "nltg.key.json"); //DaemonConstants.KeyFile);
+        return Path.Combine(configPath, "nltg.key.json");
     }
 
     private ExtKey GetMasterKey()

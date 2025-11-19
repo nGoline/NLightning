@@ -57,5 +57,4 @@ public class NodeOptions
     public uint AllowUpToPercentageOfChannelFundsInFlight { get; set; } = 80;
     public uint MinimumDepth { get; set; } = 3;
     public LightningMoney MinimumChannelSize { get; set; } = LightningMoney.Satoshis(20_000);
-    public LightningMoney ChannelReserveAmount { get; set; } = LightningMoney.Satoshis(546);
 }

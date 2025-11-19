@@ -8,7 +8,8 @@ public class WalletAddressEntity
     public bool IsChange { get; set; }
     public required AddressType AddressType { get; set; }
     public required string Address { get; set; }
-    public uint UtxoQty { get; set; }
+
+    public virtual IEnumerable<UtxoEntity>? Utxos { get; set; }
 
     // Default constructor for EF Core
     internal WalletAddressEntity() { }

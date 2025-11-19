@@ -7,22 +7,16 @@ public static class NodeUtils
     /// <summary>
     /// Gets the path for the Named-Pipe file
     /// </summary>
-    public static string GetNamedPipeFilePath(string network)
+    public static string GetNamedPipeFilePath(string cookiePath)
     {
-        var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var networkDir = Path.Combine(homeDir, NodeConstants.DaemonFolder, network);
-        Directory.CreateDirectory(networkDir); // Ensure directory exists
-        return Path.Combine(networkDir, NodeConstants.NamedPipeFile);
+        return Path.Combine(cookiePath, NodeConstants.NamedPipeFile);
     }
 
     /// <summary>
     /// Gets the path for the Named-Pipe file
     /// </summary>
-    public static string GetCookieFilePath(string network)
+    public static string GetCookieFilePath(string cookiePath)
     {
-        var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var networkDir = Path.Combine(homeDir, NodeConstants.DaemonFolder, network);
-        Directory.CreateDirectory(networkDir); // Ensure directory exists
-        return Path.Combine(networkDir, NodeConstants.CookieFile);
+        return Path.Combine(cookiePath, NodeConstants.CookieFile);
     }
 }

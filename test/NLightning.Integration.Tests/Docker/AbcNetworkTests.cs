@@ -109,11 +109,14 @@ public class AbcNetworkTests : IDisposable
         services.AddSingleton(_secureKeyManager);
         services.AddSingleton<IChannelFactory>(sp =>
         {
+            var channelIdFactory = sp.GetRequiredService<IChannelIdFactory>();
+            var channelOpenValidator = sp.GetRequiredService<IChannelOpenValidator>();
             var feeService = sp.GetRequiredService<IFeeService>();
             var lightningSigner = sp.GetRequiredService<ILightningSigner>();
             var nodeOptions = sp.GetRequiredService<IOptions<NodeOptions>>().Value;
             var sha256 = sp.GetRequiredService<ISha256>();
-            return new ChannelFactory(feeService, lightningSigner, nodeOptions, sha256);
+            return new ChannelFactory(channelIdFactory, channelOpenValidator, feeService, lightningSigner, nodeOptions,
+                                      sha256);
         });
         services.AddSingleton<ICommitmentTransactionModelFactory, CommitmentTransactionModelFactory>();
         services.AddSingleton<ILightningSigner>(serviceProvider =>
@@ -122,10 +125,11 @@ public class AbcNetworkTests : IDisposable
             var keyDerivationService = serviceProvider.GetRequiredService<IKeyDerivationService>();
             var logger = serviceProvider.GetRequiredService<ILogger<LocalLightningSigner>>();
             var nodeOptions = serviceProvider.GetRequiredService<IOptions<NodeOptions>>().Value;
+            var utxoMemoryRepository = serviceProvider.GetRequiredService<IUtxoMemoryRepository>();
 
             // Create the signer with the correct network
             return new LocalLightningSigner(fundingOutputBuilder, keyDerivationService, logger, nodeOptions,
-                                            _secureKeyManager);
+                                            _secureKeyManager, utxoMemoryRepository);
         });
         services.AddApplicationServices();
         services.AddInfrastructureServices();

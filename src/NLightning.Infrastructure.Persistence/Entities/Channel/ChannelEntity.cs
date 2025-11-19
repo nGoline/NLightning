@@ -3,6 +3,7 @@
 namespace NLightning.Infrastructure.Persistence.Entities.Channel;
 
 using Bitcoin;
+using Domain.Bitcoin.Enums;
 using Domain.Bitcoin.ValueObjects;
 using Domain.Channels.ValueObjects;
 using Domain.Crypto.ValueObjects;
@@ -98,6 +99,14 @@ public class ChannelEntity
     /// The current balance of the remote node in satoshis.
     /// </summary>
     public required decimal RemoteBalanceSatoshis { get; set; }
+
+    public AddressType? ChangeAddressType { get; set; }
+    public uint? ChangeAddressIndex { get; set; }
+
+    /// <summary>
+    /// The change address used by the funding transaction, if there's one
+    /// </summary>
+    public virtual WalletAddressEntity? ChangeAddress { get; set; }
 
     /// <summary>
     /// Represents the configuration settings associated with the Lightning Network payment channel,

@@ -212,7 +212,7 @@
 //             }
 //             else
 //             {
-//                 inputWeight += 4 * Math.Max(WeightConstants.P2UnknownSInputWeight, input.ToBytes().Length);
+//                 inputWeight += 4 * Math.Max(WeightConstants.P2UnknownInputWeight, input.ToBytes().Length);
 //                 inputWeight += input.WitScript.ToBytes().Length;
 //             }
 //         }

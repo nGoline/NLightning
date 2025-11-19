@@ -1,10 +1,12 @@
 using System.Buffers;
 using System.IO.Pipes;
 using MessagePack;
-using NLightning.Domain.Bitcoin.Enums;
 
 namespace NLightning.Client.Ipc;
 
+using Domain.Bitcoin.Enums;
+using Domain.Client.Enums;
+using Domain.Money;
 using Domain.Node.ValueObjects;
 using Transport.Ipc;
 using Transport.Ipc.Requests;
@@ -30,7 +32,7 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
         var env = new IpcEnvelope
         {
             Version = 1,
-            Command = NodeIpcCommand.NodeInfo,
+            Command = ClientCommand.NodeInfo,
             CorrelationId = Guid.NewGuid(),
             AuthToken = await GetAuthTokenAsync(ct),
             Payload = payload,
@@ -39,9 +41,7 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
 
         var respEnv = await SendAsync(env, ct);
         if (respEnv.Kind != IpcEnvelopeKind.Error)
-        {
             return MessagePackSerializer.Deserialize<NodeInfoIpcResponse>(respEnv.Payload, cancellationToken: ct);
-        }
 
         var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
         throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
@@ -57,7 +57,7 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
         var env = new IpcEnvelope
         {
             Version = 1,
-            Command = NodeIpcCommand.ConnectPeer,
+            Command = ClientCommand.ConnectPeer,
             CorrelationId = Guid.NewGuid(),
             AuthToken = await GetAuthTokenAsync(ct),
             Payload = payload,
@@ -65,10 +65,8 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
         };
 
         var respEnv = await SendAsync(env, ct);
-        if (respEnv.Kind == IpcEnvelopeKind.Error)
-        {
+        if (respEnv.Kind != IpcEnvelopeKind.Error)
             return MessagePackSerializer.Deserialize<ConnectPeerIpcResponse>(respEnv.Payload, cancellationToken: ct);
-        }
 
         var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
         throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
@@ -81,7 +79,7 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
         var env = new IpcEnvelope
         {
             Version = 1,
-            Command = NodeIpcCommand.ListPeers,
+            Command = ClientCommand.ListPeers,
             CorrelationId = Guid.NewGuid(),
             AuthToken = await GetAuthTokenAsync(ct),
             Payload = payload,
@@ -90,9 +88,7 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
 
         var respEnv = await SendAsync(env, ct);
         if (respEnv.Kind != IpcEnvelopeKind.Error)
-        {
             return MessagePackSerializer.Deserialize<ListPeersIpcResponse>(respEnv.Payload, cancellationToken: ct);
-        }
 
         var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
         throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
@@ -118,7 +114,7 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
         var env = new IpcEnvelope
         {
             Version = 1,
-            Command = NodeIpcCommand.GetAddress,
+            Command = ClientCommand.GetAddress,
             CorrelationId = Guid.NewGuid(),
             AuthToken = await GetAuthTokenAsync(ct),
             Payload = payload,
@@ -127,9 +123,7 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
 
         var respEnv = await SendAsync(env, ct);
         if (respEnv.Kind != IpcEnvelopeKind.Error)
-        {
             return MessagePackSerializer.Deserialize<GetAddressIpcResponse>(respEnv.Payload, cancellationToken: ct);
-        }
 
         var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
         throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
@@ -142,7 +136,7 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
         var env = new IpcEnvelope
         {
             Version = 1,
-            Command = NodeIpcCommand.WalletBalance,
+            Command = ClientCommand.WalletBalance,
             CorrelationId = Guid.NewGuid(),
             AuthToken = await GetAuthTokenAsync(ct),
             Payload = payload,
@@ -151,9 +145,34 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
 
         var respEnv = await SendAsync(env, ct);
         if (respEnv.Kind != IpcEnvelopeKind.Error)
-        {
             return MessagePackSerializer.Deserialize<WalletBalanceIpcResponse>(respEnv.Payload, cancellationToken: ct);
-        }
+
+        var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
+        throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
+    }
+
+    public async Task<OpenChannelIpcResponse> OpenChannelAsync(string nodeInfo, string amountSats,
+                                                               CancellationToken ct = default)
+    {
+        var req = new OpenChannelIpcRequest
+        {
+            NodeInfo = nodeInfo,
+            Amount = LightningMoney.Satoshis(Convert.ToInt64(amountSats))
+        };
+        var payload = MessagePackSerializer.Serialize(req, cancellationToken: ct);
+        var env = new IpcEnvelope
+        {
+            Version = 1,
+            Command = ClientCommand.OpenChannel,
+            CorrelationId = Guid.NewGuid(),
+            AuthToken = await GetAuthTokenAsync(ct),
+            Payload = payload,
+            Kind = 0
+        };
+
+        var respEnv = await SendAsync(env, ct);
+        if (respEnv.Kind != IpcEnvelopeKind.Error)
+            return MessagePackSerializer.Deserialize<OpenChannelIpcResponse>(respEnv.Payload, cancellationToken: ct);
 
         var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
         throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");

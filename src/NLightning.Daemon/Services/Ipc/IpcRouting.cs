@@ -3,15 +3,16 @@ using Microsoft.Extensions.Logging;
 
 namespace NLightning.Daemon.Services.Ipc;
 
-using Interfaces;
-using NLightning.Transport.Ipc;
+using Daemon.Ipc.Interfaces;
+using Domain.Client.Enums;
+using Transport.Ipc;
 
 /// <summary>
 /// Default router that uses a map of handlers keyed by command.
 /// </summary>
-public sealed class IpcRequestRouter : IIpcRequestRouter
+internal sealed class IpcRequestRouter : IIpcRequestRouter
 {
-    private readonly IReadOnlyDictionary<NodeIpcCommand, IIpcCommandHandler> _handlers;
+    private readonly IReadOnlyDictionary<ClientCommand, IIpcCommandHandler> _handlers;
     private readonly ILogger<IpcRequestRouter> _logger;
 
     public IpcRequestRouter(IEnumerable<IIpcCommandHandler> handlers, ILogger<IpcRequestRouter> logger)

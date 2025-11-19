@@ -1,11 +1,10 @@
-using NLightning.Domain.Bitcoin.Transactions.Constants;
-using NLightning.Domain.Bitcoin.Transactions.Outputs;
-using NLightning.Domain.Protocol.Models;
-
 namespace NLightning.Domain.Channels.Factories;
 
 using Bitcoin.Interfaces;
+using Bitcoin.Transactions.Constants;
+using Bitcoin.Transactions.Outputs;
 using Bitcoin.ValueObjects;
+using Client.Requests;
 using Constants;
 using Crypto.Hashes;
 using Crypto.ValueObjects;
@@ -16,21 +15,27 @@ using Interfaces;
 using Models;
 using Money;
 using Node.Options;
+using Protocol.Interfaces;
 using Protocol.Messages;
-using Protocol.Payloads;
-using Protocol.Tlv;
+using Protocol.Models;
+using Validators.Parameters;
 using ValueObjects;
 
 public class ChannelFactory : IChannelFactory
 {
+    private readonly IChannelIdFactory _channelIdFactory;
+    private readonly IChannelOpenValidator _channelOpenValidator;
     private readonly IFeeService _feeService;
     private readonly ILightningSigner _lightningSigner;
     private readonly NodeOptions _nodeOptions;
     private readonly ISha256 _sha256;
 
-    public ChannelFactory(IFeeService feeService, ILightningSigner lightningSigner, NodeOptions nodeOptions,
+    public ChannelFactory(IChannelIdFactory channelIdFactory, IChannelOpenValidator channelOpenValidator,
+                          IFeeService feeService, ILightningSigner lightningSigner, NodeOptions nodeOptions,
                           ISha256 sha256)
     {
+        _channelIdFactory = channelIdFactory;
+        _channelOpenValidator = channelOpenValidator;
         _feeService = feeService;
         _lightningSigner = lightningSigner;
         _nodeOptions = nodeOptions;
@@ -52,11 +57,15 @@ public class ChannelFactory : IChannelFactory
             throw new ChannelErrorException("Channel type was negotiated but not provided");
 
         // Perform optional checks for the channel
-        PerformOptionalChecks(payload);
+        var ourChannelReserveAmount = GetOurChannelReserveFromFundingAmount(payload.FundingAmount);
+        _channelOpenValidator.PerformOptionalChecks(
+            ChannelOpenOptionalValidationParameters.FromOpenChannel1Payload(payload, ourChannelReserveAmount));
 
         // Perform mandatory checks for the channel
         var currentFee = await _feeService.GetFeeRatePerKwAsync();
-        PerformMandatoryChecks(message.ChannelTypeTlv, currentFee, negotiatedFeatures, payload, out var minimumDepth);
+        _channelOpenValidator.PerformMandatoryChecks(
+            ChannelOpenMandatoryValidationParameters.FromOpenChannel1Payload(
+                message.ChannelTypeTlv, currentFee, negotiatedFeatures, payload), out var minimumDepth);
 
         // Check for the upfront shutdown script
         if (message.UpfrontShutdownScriptTlv is null
@@ -114,7 +123,7 @@ public class ChannelFactory : IChannelFactory
                                               payload.DustLimitAmount, payload.ToSelfDelay, useScidAlias,
                                               localUpfrontShutdownScript, remoteUpfrontShutdownScript);
 
-        // Generate the commitment numbers
+        // Generate the commitment number
         var commitmentNumber = new CommitmentNumber(remoteKeySet.PaymentCompactBasepoint,
                                                     localKeySet.PaymentCompactBasepoint, _sha256);
 
@@ -134,158 +143,122 @@ public class ChannelFactory : IChannelFactory
         }
     }
 
-    /// <summary>
-    /// Conducts optional validation checks on channel parameters to ensure compliance with acceptable ranges
-    /// and configurations beyond the mandatory requirements.
-    /// </summary>
-    /// <remarks>
-    /// This method verifies that optional configuration parameters meet recommended safety and usability thresholds:
-    /// - Validates that the funding amount meets the minimum channel size threshold.
-    /// - Checks that the HTLC minimum amount is not excessively large relative to the node's configured minimum value.
-    /// - Validates that the maximum HTLC value in flight is enough relative to the channel funds.
-    /// - Ensures the channel reserve amount is not excessively high relative to the node's channel reserve configuration.
-    /// - Verifies that the maximum number of accepted HTLCs meets a minimum threshold.
-    /// - Confirms that the dust limit is not excessively large relative to the node's configured dust limit.
-    /// </remarks>
-    /// <param name="payload">The payload containing the channel's configuration parameters, including funding amount, HTLC limits, and related settings.</param>
-    /// <exception cref="ChannelErrorException">
-    /// Thrown when one of the optional checks fails, including missing channel type when required, insufficient funding,
-    /// excessively high or low HTLC value limits, or incompatible reserve and dust limits.
-    /// </exception>
-    private void PerformOptionalChecks(OpenChannel1Payload payload)
+    public async Task<ChannelModel> CreateChannelV1AsInitiatorAsync(OpenChannelClientRequest request,
+                                                                    FeatureOptions negotiatedFeatures,
+                                                                    CompactPubKey remoteNodeId)
     {
-        // Check if Funding Satoshis is too small
-        if (payload.FundingAmount < _nodeOptions.MinimumChannelSize)
-            throw new ChannelErrorException($"Funding amount is too small: {payload.FundingAmount}");
+        // If dual fund is negotiated fail the channel
+        if (negotiatedFeatures.DualFund == FeatureSupport.Compulsory)
+            throw new ChannelErrorException("We can only open dual fund channels to this peer");
 
-        // Check if we consider htlc_minimum_msat too large. IE. 20% bigger than our htlc minimum amount
-        if (payload.HtlcMinimumAmount > _nodeOptions.HtlcMinimumAmount * 1.2M)
-            throw new ChannelErrorException($"Htlc minimum amount is too large: {payload.HtlcMinimumAmount}");
-
-        // Check if we consider max_htlc_value_in_flight_msat too small. IE. 20% smaller than our maximum htlc value
-        var maxHtlcValueInFlight =
-            LightningMoney.Satoshis(_nodeOptions.AllowUpToPercentageOfChannelFundsInFlight *
-                                    payload.FundingAmount.Satoshi / 100M);
-        if (payload.MaxHtlcValueInFlight < maxHtlcValueInFlight * 0.8M)
-            throw new ChannelErrorException($"Max htlc value in flight is too small: {payload.MaxHtlcValueInFlight}");
-
-        // Check if we consider channel_reserve_satoshis too large. IE. 20% bigger than our channel reserve
-        if (payload.ChannelReserveAmount > _nodeOptions.ChannelReserveAmount * 1.2M)
-            throw new ChannelErrorException($"Channel reserve amount is too large: {payload.ChannelReserveAmount}");
-
-        // Check if we consider max_accepted_htlcs too small. IE. 20% smaller than our max-accepted htlcs
-        if (payload.MaxAcceptedHtlcs < (ushort)(_nodeOptions.MaxAcceptedHtlcs * 0.8M))
-            throw new ChannelErrorException($"Max accepted htlcs is too small: {payload.MaxAcceptedHtlcs}");
-
-        // Check if we consider dust_limit_satoshis too large. IE. 75% bigger than our dust limit
-        if (payload.DustLimitAmount > _nodeOptions.DustLimitAmount * 1.75M)
-            throw new ChannelErrorException($"Dust limit amount is too large: {payload.DustLimitAmount}");
-    }
-
-    /// <summary>
-    /// Enforce mandatory checks when establishing a new Lightning Network channel.
-    /// </summary>
-    /// <remarks>
-    /// The method validates channel parameters to ensure they comply with predefined safety and compatibility checks:
-    /// - ChainHash must be compatible with the node's network.
-    /// - Push amount must not exceed 1000 times the funding amount.
-    /// - To_self_delay must not be unreasonably large compared to the node's configured value.
-    /// - Max_accepted_htlcs must not exceed the allowed maximum.
-    /// - Fee rate per kw must fall within acceptable limits.
-    /// - Dust limit must be lower than or equal to the channel reserve amount and adhere to minimum thresholds.
-    /// - Funding amount must be sufficient to cover fees and the channel reserve.
-    /// - Large channels must only be supported if negotiated features include support for them.
-    /// - Additional validation may apply to channel types based on negotiated options.
-    /// </remarks>
-    /// <param name="channelTypeTlv">Optional TLV data specifying the channel type, which may impose additional constraints.</param>
-    /// <param name="currentFeeRatePerKw">The current network fee rate per kiloweight, used for fee validation.</param>
-    /// <param name="negotiatedFeatures">Negotiated feature options between the participating nodes, affecting channel setup constraints.</param>
-    /// <param name="payload">The payload containing the channel's configuration parameters and constraints.</param>
-    /// <param name="minimumDepth">The minimum number of confirmations required for the channel to be considered operational.</param>
-    /// <exception cref="ChannelErrorException">
-    /// Thrown when any of the mandatory checks fail, such as invalid chain hash, excessive push amount, unreasonably large delay,
-    /// invalid funding amount, unsupported large channel, or mismatched channel type.
-    /// </exception>
-    private void PerformMandatoryChecks(ChannelTypeTlv? channelTypeTlv, LightningMoney currentFeeRatePerKw,
-                                        FeatureOptions negotiatedFeatures, OpenChannel1Payload payload,
-                                        out uint minimumDepth)
-    {
-        // Check if ChainHash is compatible
-        if (payload.ChainHash != _nodeOptions.BitcoinNetwork.ChainHash)
-            throw new ChannelErrorException("ChainHash is not compatible");
-
-        // Check if the push amount is too large
-        if (payload.PushAmount > 1_000 * payload.FundingAmount)
-            throw new ChannelErrorException($"Push amount is too large: {payload.PushAmount}");
-
-        // Check if we consider to_self_delay unreasonably large. IE. 50% bigger than our to_self_delay
-        if (payload.ToSelfDelay > _nodeOptions.ToSelfDelay * 1.5M)
-            throw new ChannelErrorException($"To self delay is too large: {payload.ToSelfDelay}");
-
-        // Check max_accepted_htlcs is too large
-        if (payload.MaxAcceptedHtlcs > ChannelConstants.MaxAcceptedHtlcs)
-            throw new ChannelErrorException($"Max accepted htlcs is too small: {payload.MaxAcceptedHtlcs}");
-
-        // Check if we consider fee_rate_per_kw too large
-        if (payload.FeeRatePerKw > ChannelConstants.MaxFeePerKw)
-            throw new ChannelErrorException($"Fee rate per kw is too large: {payload.FeeRatePerKw}");
-
-        // Check if we consider fee_rate_per_kw too small. IE. 20% smaller than our fee rate
-        if (payload.FeeRatePerKw < ChannelConstants.MinFeePerKw || payload.FeeRatePerKw < currentFeeRatePerKw * 0.8M)
+        // Check if the FundingAmount is too small
+        if (request.FundingAmount < _nodeOptions.MinimumChannelSize)
             throw new ChannelErrorException(
-                $"Fee rate per kw is too small: {payload.FeeRatePerKw}, currentFee{currentFeeRatePerKw}");
+                $"Funding amount is smaller than our MinimumChannelSize: {request.FundingAmount} < {_nodeOptions.MinimumChannelSize}");
 
-        // Check if the dust limit is greater than the channel reserve amount 
-        if (payload.DustLimitAmount > payload.ChannelReserveAmount)
-            throw new ChannelErrorException(
-                $"Dust limit({payload.DustLimitAmount}) is greater than channel reserve({payload.ChannelReserveAmount})");
+        // Check if our fee is too big
+        if (request.FeeRatePerKw is not null && request.FeeRatePerKw > ChannelConstants.MaxFeePerKw)
+            throw new ChannelErrorException($"Fee rate per kw is too large: {request.FeeRatePerKw}");
 
-        // Check if dust_limit_satoshis is too small
-        if (payload.DustLimitAmount < ChannelConstants.MinDustLimitAmount)
-            throw new ChannelErrorException($"Dust limit amount is too small: {payload.DustLimitAmount}");
+        // Check if the dust limit is greater than the channel reserve amount
+        var channelReserveAmount = GetOurChannelReserveFromFundingAmount(request.FundingAmount);
+        if (request.ChannelReserveAmount is not null && request.ChannelReserveAmount > channelReserveAmount)
+            channelReserveAmount = request.ChannelReserveAmount;
+
+        if (request.DustLimitAmount is not null)
+        {
+            if (request.DustLimitAmount > channelReserveAmount)
+                throw new ChannelErrorException(
+                    $"Dust limit({request.DustLimitAmount}) is greater than channel reserve({channelReserveAmount})");
+
+            // Check if dust_limit_satoshis is too small
+            if (request.DustLimitAmount < ChannelConstants.MinDustLimitAmount)
+                throw new ChannelErrorException($"Dust limit amount is too small: {request.DustLimitAmount}");
+        }
 
         // Check if there are enough funds to pay for fees
+        var currentFeeRatePerKw = await _feeService.GetFeeRatePerKwAsync();
         var expectedWeight = negotiatedFeatures.AnchorOutputs > FeatureSupport.No
                                  ? TransactionConstants.InitialCommitmentTransactionWeightNoAnchor
                                  : TransactionConstants.InitialCommitmentTransactionWeightWithAnchor;
         var expectedFee = LightningMoney.Satoshis(expectedWeight * currentFeeRatePerKw.Satoshi / 1000);
-        if (payload.FundingAmount < expectedFee + payload.ChannelReserveAmount)
-            throw new ChannelErrorException($"Funding amount is too small to cover fees: {payload.FundingAmount}");
+        if (request.FundingAmount < expectedFee + channelReserveAmount)
+            throw new ChannelErrorException($"Funding amount is too small to cover fees: {request.FundingAmount}");
 
         // Check if this is a large channel and if we support it
-        if (payload.FundingAmount >= ChannelConstants.LargeChannelAmount &&
+        if (request.FundingAmount >= ChannelConstants.LargeChannelAmount &&
             negotiatedFeatures.LargeChannels == FeatureSupport.No)
-            throw new ChannelErrorException("We don't support large channels");
+            throw new ChannelErrorException("The peer don't support large channels");
 
-        // Check ChannelType against negotiated options
-        minimumDepth = _nodeOptions.MinimumDepth;
-        if (channelTypeTlv is not null)
+        // Check if we want zeroconf and if it's negotiated
+        var minimumDepth = _nodeOptions.MinimumDepth;
+        if (request.IsZeroConfChannel)
         {
-            // Check if it set any non-negotiated features
-            if (channelTypeTlv.Features.IsFeatureSet(Feature.OptionStaticRemoteKey, true))
-            {
-                if (negotiatedFeatures.StaticRemoteKey == FeatureSupport.No)
-                    throw new ChannelErrorException("Static remote key feature is not supported but requested by peer");
+            if (_nodeOptions.Features.ZeroConf == FeatureSupport.No)
+                throw new ChannelErrorException(
+                    "ZeroConf feature not supported, change our configuration and try again");
 
-                if (channelTypeTlv.Features.IsFeatureSet(Feature.OptionAnchorOutputs, true)
-                 && negotiatedFeatures.AnchorOutputs == FeatureSupport.No)
-                    throw new ChannelErrorException("Anchor outputs feature is not supported but requested by peer");
+            if (negotiatedFeatures.ZeroConf == FeatureSupport.No)
+                throw new ChannelErrorException("ZeroConf not supported by our peer");
 
-                if (channelTypeTlv.Features.IsFeatureSet(Feature.OptionScidAlias, true))
-                {
-                    if (payload.ChannelFlags.AnnounceChannel)
-                        throw new ChannelErrorException("Invalid channel flags for OPTION_SCID_ALIAS");
-                }
-
-                // Check for ZeroConf feature
-                if (channelTypeTlv.Features.IsFeatureSet(Feature.OptionZeroconf, true))
-                {
-                    if (_nodeOptions.Features.ZeroConf == FeatureSupport.No)
-                        throw new ChannelErrorException("ZeroConf feature not supported but requested by peer");
-
-                    minimumDepth = 0U;
-                }
-            }
+            minimumDepth = 0U;
         }
+
+        // Calculate the amounts
+        var toRemoteAmount = request.PushAmount ?? LightningMoney.Zero;
+        var toLocalAmount = request.FundingAmount - toRemoteAmount;
+
+        // Generate our MaxHtlcValueInFlight if not provided
+        var maxHtlcValueInFlight = request.MaxHtlcValueInFlight
+                                ?? LightningMoney.Satoshis(_nodeOptions.AllowUpToPercentageOfChannelFundsInFlight *
+                                                           request.FundingAmount.Satoshi / 100M);
+
+        // Generate local keys through the signer
+        var localKeyIndex = _lightningSigner.CreateNewChannel(out var localBasepoints, out var firstPerCommitmentPoint);
+
+        // Create the local key set
+        var localKeySet = new ChannelKeySetModel(localKeyIndex, localBasepoints.FundingPubKey,
+                                                 localBasepoints.RevocationBasepoint, localBasepoints.PaymentBasepoint,
+                                                 localBasepoints.DelayedPaymentBasepoint, localBasepoints.HtlcBasepoint,
+                                                 firstPerCommitmentPoint);
+
+        BitcoinScript? localUpfrontShutdownScript = null;
+        // Generate our upfront shutdown script
+        if (negotiatedFeatures.UpfrontShutdownScript == FeatureSupport.Compulsory)
+            throw new ChannelErrorException("Upfront shutdown script is compulsory but we are not able to send it");
+
+        if (_nodeOptions.Features.UpfrontShutdownScript > FeatureSupport.No)
+        {
+            // Generate our upfront shutdown script
+            // TODO: Generate a script from the local key set
+            // localUpfrontShutdownScript = ;
+        }
+
+        // Generate the channel configuration
+        var channelConfig = new ChannelConfig(channelReserveAmount, request.FeeRatePerKw ?? currentFeeRatePerKw,
+                                              request.HtlcMinimumAmount ?? _nodeOptions.HtlcMinimumAmount,
+                                              request.DustLimitAmount ?? _nodeOptions.DustLimitAmount,
+                                              request.MaxAcceptedHtlcs ?? _nodeOptions.MaxAcceptedHtlcs,
+                                              maxHtlcValueInFlight, minimumDepth,
+                                              negotiatedFeatures.AnchorOutputs != FeatureSupport.No,
+                                              LightningMoney.Zero, request.ToSelfDelay ?? _nodeOptions.ToSelfDelay,
+                                              negotiatedFeatures.ScidAlias, localUpfrontShutdownScript);
+
+        try
+        {
+            // Create the channel using only our data
+            return new ChannelModel(channelConfig, _channelIdFactory.CreateTemporaryChannelId(), null,
+                                    null, true, null, null, toLocalAmount, localKeySet, 1, 0, toRemoteAmount,
+                                    null, 1, remoteNodeId, 0, ChannelState.V1Opening, ChannelVersion.V1);
+        }
+        catch (Exception e)
+        {
+            throw new ChannelErrorException("Error creating commitment transaction", e);
+        }
+    }
+
+    private LightningMoney GetOurChannelReserveFromFundingAmount(LightningMoney fundingAmount)
+    {
+        return fundingAmount * 0.01M;
     }
 }

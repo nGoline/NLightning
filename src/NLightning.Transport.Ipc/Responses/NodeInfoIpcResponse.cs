@@ -6,7 +6,7 @@ using Domain.Crypto.ValueObjects;
 using Domain.Protocol.ValueObjects;
 
 /// <summary>
-/// Response for NodeInfo (transport-specific DTO for MessagePack).
+/// Response for NodeInfo command
 /// </summary>
 [MessagePackObject]
 public sealed class NodeInfoIpcResponse

@@ -29,9 +29,9 @@ public class BitcoinWalletService : IBitcoinWalletService
         _network = Network.GetNetwork(nodeOptions.Value.BitcoinNetwork) ?? Network.Main;
     }
 
-    public async Task<string> GetUnusedAddressAsync(AddressType addressType, bool isChange)
+    public async Task<WalletAddressModel> GetUnusedAddressAsync(AddressType addressType, bool isChange)
     {
-        if ((int)addressType > 2)
+        if (addressType is not (AddressType.P2Wpkh or AddressType.P2Tr))
             throw new InvalidOperationException(
                 "You cannot use flags for this method. Please select only one address type.");
 
@@ -39,10 +39,13 @@ public class BitcoinWalletService : IBitcoinWalletService
         var addressModel = await _uow.WalletAddressesDbRepository.GetUnusedAddressAsync(addressType, isChange);
 
         if (addressModel is not null)
-            return addressModel.Address;
+            return addressModel;
 
         // If there's none, get the last used index from db
         var lastUsedIndex = await _uow.WalletAddressesDbRepository.GetLastUsedAddressIndex(addressType, isChange);
+
+        _logger.LogInformation("Generating 10 new {addressType} {change}addresses and saving to the database.",
+                               Enum.GetName(addressType), isChange ? "change " : string.Empty);
 
         // Generate 10 new addresses
         var addressList = new List<WalletAddressModel>(10);
@@ -70,6 +73,6 @@ public class BitcoinWalletService : IBitcoinWalletService
         _uow.WalletAddressesDbRepository.AddRange(addressList);
         await _uow.SaveChangesAsync();
 
-        return addressList[0].Address;
+        return addressList[0];
     }
 }

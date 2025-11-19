@@ -30,8 +30,13 @@ using Infrastructure.Bitcoin.Wallet.Interfaces;
 public class FundingCreatedMessageHandlerTests
 {
     private readonly Mock<IBlockchainMonitor> _mockBlockchainMonitor;
+    private readonly Mock<IChannelIdFactory> _mockChannelIdFactory;
     private readonly Mock<IChannelMemoryRepository> _mockChannelMemoryRepository;
+    private readonly Mock<ICommitmentTransactionBuilder> _mockCommitmentTransactionBuilder;
+    private readonly Mock<ICommitmentTransactionModelFactory> _mockCommitmentTransactionModelFactory;
     private readonly Mock<ILightningSigner> _mockLightningSigner;
+    private readonly Mock<ILogger<FundingCreatedMessageHandler>> _mockLogger;
+    private readonly Mock<IMessageFactory> _mockMessageFactory;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IChannelDbRepository> _mockChannelDbRepository;
     private readonly FundingCreatedMessageHandler _handler;
@@ -44,28 +49,29 @@ public class FundingCreatedMessageHandlerTests
     private readonly TxId _fundingTxId;
     private readonly ushort _fundingOutputIndex;
     private readonly CompactSignature _remoteSignature;
+    private readonly CompactSignature _localSignature;
 
     public FundingCreatedMessageHandlerTests()
     {
         _mockBlockchainMonitor = new Mock<IBlockchainMonitor>();
-        var mockChannelIdFactory = new Mock<IChannelIdFactory>();
+        _mockChannelIdFactory = new Mock<IChannelIdFactory>();
         _mockChannelMemoryRepository = new Mock<IChannelMemoryRepository>();
-        var mockCommitmentTransactionBuilder = new Mock<ICommitmentTransactionBuilder>();
-        var mockCommitmentTransactionModelFactory = new Mock<ICommitmentTransactionModelFactory>();
+        _mockCommitmentTransactionBuilder = new Mock<ICommitmentTransactionBuilder>();
+        _mockCommitmentTransactionModelFactory = new Mock<ICommitmentTransactionModelFactory>();
         _mockLightningSigner = new Mock<ILightningSigner>();
-        var mockLogger = new Mock<ILogger<FundingCreatedMessageHandler>>();
-        var mockMessageFactory = new Mock<IMessageFactory>();
+        _mockLogger = new Mock<ILogger<FundingCreatedMessageHandler>>();
+        _mockMessageFactory = new Mock<IMessageFactory>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockChannelDbRepository = new Mock<IChannelDbRepository>();
 
         _mockUnitOfWork.Setup(x => x.ChannelDbRepository).Returns(_mockChannelDbRepository.Object);
 
-        _handler = new FundingCreatedMessageHandler(_mockBlockchainMonitor.Object, mockChannelIdFactory.Object,
+        _handler = new FundingCreatedMessageHandler(_mockBlockchainMonitor.Object, _mockChannelIdFactory.Object,
                                                     _mockChannelMemoryRepository.Object,
-                                                    mockCommitmentTransactionBuilder.Object,
-                                                    mockCommitmentTransactionModelFactory.Object,
-                                                    _mockLightningSigner.Object, mockLogger.Object,
-                                                    mockMessageFactory.Object, _mockUnitOfWork.Object);
+                                                    _mockCommitmentTransactionBuilder.Object,
+                                                    _mockCommitmentTransactionModelFactory.Object,
+                                                    _mockLightningSigner.Object, _mockLogger.Object,
+                                                    _mockMessageFactory.Object, _mockUnitOfWork.Object);
         // Setup test data
         CompactPubKey emptyPubKey = new byte[]
         {
@@ -89,7 +95,7 @@ public class FundingCreatedMessageHandlerTests
         _remoteSignature = new CompactSignature(new byte[64]);
         byte[] localSignatureBytes = _remoteSignature;
         localSignatureBytes[0] = 1;
-        var localSignature = new CompactSignature(localSignatureBytes);
+        _localSignature = new CompactSignature(localSignatureBytes);
         var fundingAmount = LightningMoney.Satoshis(10_000);
         var commitmentNumber = new CommitmentNumber(emptyPubKey, emptyPubKey, new FakeSha256());
         var fundingOutputInfo = new FundingOutputInfo(fundingAmount, emptyPubKey, emptyPubKey)
@@ -113,8 +119,8 @@ public class FundingCreatedMessageHandlerTests
                                     _peerPubKey, 0, ChannelState.V1Opening, ChannelVersion.V1);
 
         // Setup ChannelIdFactory
-        mockChannelIdFactory.Setup(x => x.CreateV1(It.IsAny<TxId>(), It.IsAny<ushort>()))
-                            .Returns(_newChannelId);
+        _mockChannelIdFactory.Setup(x => x.CreateV1(It.IsAny<TxId>(), It.IsAny<ushort>()))
+                             .Returns(_newChannelId);
 
         // Setup mock commitment transactions
         var mockLocalCommitmentTx =
@@ -122,11 +128,11 @@ public class FundingCreatedMessageHandlerTests
         var mockRemoteCommitmentTx =
             new CommitmentTransactionModel(commitmentNumber, LightningMoney.Zero, fundingOutputInfo);
 
-        mockCommitmentTransactionModelFactory
+        _mockCommitmentTransactionModelFactory
            .Setup(x => x.CreateCommitmentTransactionModel(It.IsAny<ChannelModel>(), CommitmentSide.Local))
            .Returns(mockLocalCommitmentTx);
 
-        mockCommitmentTransactionModelFactory
+        _mockCommitmentTransactionModelFactory
            .Setup(x => x.CreateCommitmentTransactionModel(It.IsAny<ChannelModel>(), CommitmentSide.Remote))
            .Returns(mockRemoteCommitmentTx);
 
@@ -134,23 +140,23 @@ public class FundingCreatedMessageHandlerTests
         var mockLocalUnsignedTx = new SignedTransaction(TxId.Zero, [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]);
         var mockRemoteUnsignedTx = new SignedTransaction(TxId.One, [0x01, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]);
 
-        mockCommitmentTransactionBuilder
+        _mockCommitmentTransactionBuilder
            .Setup(x => x.Build(mockLocalCommitmentTx))
            .Returns(mockLocalUnsignedTx);
 
-        mockCommitmentTransactionBuilder
+        _mockCommitmentTransactionBuilder
            .Setup(x => x.Build(mockRemoteCommitmentTx))
            .Returns(mockRemoteUnsignedTx);
 
         // Setup LightningSigner
         _mockLightningSigner
-           .Setup(x => x.SignTransaction(It.IsAny<ChannelId>(), It.IsAny<SignedTransaction>()))
-           .Returns(localSignature);
+           .Setup(x => x.SignChannelTransaction(It.IsAny<ChannelId>(), It.IsAny<SignedTransaction>()))
+           .Returns(_localSignature);
 
         // Setup MessageFactory
-        mockMessageFactory
-           .Setup(x => x.CreatedFundingSignedMessage(It.IsAny<ChannelId>(), It.IsAny<CompactSignature>()))
-           .Returns(new FundingSignedMessage(new FundingSignedPayload(_newChannelId, localSignature)));
+        _mockMessageFactory
+           .Setup(x => x.CreateFundingSignedMessage(It.IsAny<ChannelId>(), It.IsAny<CompactSignature>()))
+           .Returns(new FundingSignedMessage(new FundingSignedPayload(_newChannelId, _localSignature)));
 
         // Setup ChannelDbRepository
         _mockChannelDbRepository
@@ -208,7 +214,7 @@ public class FundingCreatedMessageHandlerTests
 
         // Verify our signature was generated
         _mockLightningSigner.Verify(
-            x => x.SignTransaction(_newChannelId, It.IsAny<SignedTransaction>()),
+            x => x.SignChannelTransaction(_newChannelId, It.IsAny<SignedTransaction>()),
             Times.Once);
 
         // Verify channel state was updated

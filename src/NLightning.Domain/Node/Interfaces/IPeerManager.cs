@@ -1,8 +1,8 @@
-using NLightning.Domain.Crypto.ValueObjects;
-using NLightning.Domain.Node.Models;
-using NLightning.Domain.Node.ValueObjects;
-
 namespace NLightning.Domain.Node.Interfaces;
+
+using Crypto.ValueObjects;
+using Models;
+using ValueObjects;
 
 /// <summary>
 /// Interface for the peer manager.
@@ -36,4 +36,5 @@ public interface IPeerManager
     void DisconnectPeer(CompactPubKey compactPubKey);
 
     List<PeerModel> ListPeers();
+    PeerModel? GetPeer(CompactPubKey peerId);
 }

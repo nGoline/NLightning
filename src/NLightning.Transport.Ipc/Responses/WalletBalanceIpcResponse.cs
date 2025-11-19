@@ -8,7 +8,7 @@ using Domain.Money;
 /// Response for Wallet Balance command
 /// </summary>
 [MessagePackObject]
-public class WalletBalanceIpcResponse
+public sealed class WalletBalanceIpcResponse
 {
     [Key(0)] public required LightningMoney ConfirmedBalance { get; init; }
     [Key(1)] public required LightningMoney UnconfirmedBalance { get; init; }

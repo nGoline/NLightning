@@ -628,8 +628,8 @@ public class MessageFactory : IMessageFactory
     /// <seealso cref="ChannelId"/>
     /// <seealso cref="CompactSignature"/>
     /// <seealso cref="FundingCreatedPayload"/>
-    public FundingCreatedMessage CreatedFundingCreatedMessage(ChannelId temporaryChannelId, TxId fundingTxId,
-                                                              ushort fundingOutputIndex, CompactSignature signature)
+    public FundingCreatedMessage CreateFundingCreatedMessage(ChannelId temporaryChannelId, TxId fundingTxId,
+                                                             ushort fundingOutputIndex, CompactSignature signature)
     {
         var payload = new FundingCreatedPayload(temporaryChannelId, fundingTxId, fundingOutputIndex, signature);
 
@@ -646,7 +646,7 @@ public class MessageFactory : IMessageFactory
     /// <seealso cref="ChannelId"/>
     /// <seealso cref="CompactSignature"/>
     /// <seealso cref="FundingCreatedPayload"/>
-    public FundingSignedMessage CreatedFundingSignedMessage(ChannelId channelId, CompactSignature signature)
+    public FundingSignedMessage CreateFundingSignedMessage(ChannelId channelId, CompactSignature signature)
     {
         var payload = new FundingSignedPayload(channelId, signature);
 

@@ -29,9 +29,11 @@ try
         Log.Logger.Error("An unhandled exception occurred: {exception}", exception);
     };
 
-    // Get network for the PID file path
-    var network = CommandLineHelper.GetNetwork(args);
-    var pidFilePath = DaemonUtils.GetPidFilePath(network);
+    // Read the configuration file to check for daemon setting
+    var (initialConfig, network, configPath) = NodeConfigurationExtensions.ReadInitialConfiguration(args);
+
+    // Get PID file path
+    var pidFilePath = DaemonUtils.GetPidFilePath(configPath);
 
     // Check for the stop command
     if (DaemonUtils.IsStopRequested(args))
@@ -53,9 +55,6 @@ try
         DaemonUtils.ShowUsage();
         return 0;
     }
-
-    // Read the configuration file to check for daemon setting
-    var initialConfig = NodeConfigurationExtensions.ReadInitialConfiguration(args);
 
     string? password = null;
 
@@ -79,13 +78,13 @@ try
     }
 
     SecureKeyManager keyManager;
-    var keyFilePath = SecureKeyManager.GetKeyFilePath(network);
+    var keyFilePath = SecureKeyManager.GetKeyFilePath(configPath);
     if (!File.Exists(keyFilePath))
     {
         // Get current Block Height for key birth
         try
         {
-            // Create logger for the wallet service using Serilog
+            // Create the logger for the wallet service using Serilog
             var loggerFactory = LoggerFactory.Create(b => b.AddSerilog(Log.Logger, dispose: false));
             var walletLogger = loggerFactory.CreateLogger<BitcoinChainService>();
 
@@ -97,10 +96,8 @@ try
                            ?? throw new InvalidOperationException("Node configuration section is missing or invalid.");
 
             // Instantiate the service
-            var bitcoinWalletService = new BitcoinChainService(
-                Options.Create(bitcoinOptions),
-                walletLogger,
-                Options.Create(nodeOptions)
+            var bitcoinWalletService = new BitcoinChainService(Options.Create(bitcoinOptions), walletLogger,
+                                                               Options.Create(nodeOptions)
             );
 
             var heightOfBirth = await bitcoinWalletService.GetCurrentBlockHeightAsync();
@@ -139,7 +136,7 @@ try
     // Create and run host
     var host = Host.CreateDefaultBuilder(args)
                    .ConfigureNltg(initialConfig)
-                   .ConfigureNltgServices(keyManager)
+                   .ConfigureNltgServices(keyManager, configPath)
                    .Build();
 
     // Run migrations if configured

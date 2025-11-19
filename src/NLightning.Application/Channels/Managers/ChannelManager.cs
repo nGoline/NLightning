@@ -95,6 +95,15 @@ public class ChannelManager : IChannelManager
                 return await GetChannelMessageHandler<OpenChannel1Message>(scope)
                           .HandleAsync(openChannel1Message, currentState, negotiatedFeatures, peerPubKey);
 
+            case MessageTypes.AcceptChannel:
+                // Handle the accept channel message
+                var acceptChannel1Message = message as AcceptChannel1Message
+                                         ?? throw new ChannelErrorException(
+                                                "Error boxing message to AcceptChannel1Message",
+                                                "Sorry, we had an internal error");
+                return await GetChannelMessageHandler<AcceptChannel1Message>(scope)
+                          .HandleAsync(acceptChannel1Message, currentState, negotiatedFeatures, peerPubKey);
+
             case MessageTypes.FundingCreated:
                 // Handle the funding-created message
                 var fundingCreatedMessage = message as FundingCreatedMessage
@@ -288,7 +297,7 @@ public class ChannelManager : IChannelManager
             _channelMemoryRepository.AddChannel(channel);
         }
 
-        var fundingConfirmedHandler = scope.ServiceProvider.GetRequiredService<FundingConfirmedHandler>();
+        var fundingConfirmedHandler = scope.ServiceProvider.GetRequiredService<FundingConfirmedMessageHandler>();
 
         // If we get a response, raise the event with the message
         fundingConfirmedHandler.OnMessageReady += (_, message) =>

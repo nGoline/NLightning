@@ -42,7 +42,7 @@ public class CommitmentTransactionModelFactory : ICommitmentTransactionModelFact
 
         // Get basepoints from the signer instead of the old key set model
         var localBasepoints = _lightningSigner.GetChannelBasepoints(channel.LocalKeySet.KeyIndex);
-        var remoteBasepoints = new ChannelBasepoints(channel.RemoteKeySet.FundingCompactPubKey,
+        var remoteBasepoints = new ChannelBasepoints(channel.RemoteKeySet!.FundingCompactPubKey,
                                                      channel.RemoteKeySet.RevocationCompactBasepoint,
                                                      channel.RemoteKeySet.PaymentCompactBasepoint,
                                                      channel.RemoteKeySet.DelayedPaymentCompactBasepoint,
@@ -66,7 +66,7 @@ public class CommitmentTransactionModelFactory : ICommitmentTransactionModelFact
         // Calculate base weight
         var weight = WeightConstants.TransactionBaseWeight
                    + TransactionConstants.CommitmentTransactionInputWeight
-                   // + htlcs.Count * WeightConstants.HtlcOutputWeight
+                     // + htlcs.Count * WeightConstants.HtlcOutputWeight
                    + WeightConstants.P2WshOutputWeight; // To Local Output
 
         // Set initial amounts for to_local and to_remote outputs
@@ -208,7 +208,7 @@ public class CommitmentTransactionModelFactory : ICommitmentTransactionModelFact
         }
 
         // Create and return the commitment transaction model
-        return new CommitmentTransactionModel(channel.CommitmentNumber, fee, channel.FundingOutput,
+        return new CommitmentTransactionModel(channel.CommitmentNumber!, fee, channel.FundingOutput!,
                                               localAnchorOutput, remoteAnchorOutput, toLocalOutput, toRemoteOutput,
                                               offeredHtlcOutputs, receivedHtlcOutputs);
     }

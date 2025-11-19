@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 namespace NLightning.Daemon.Services;
 
 using Domain.Bitcoin.Interfaces;
+using Domain.Client.Interfaces;
 using Domain.Node.Interfaces;
 using Domain.Node.Options;
 using Domain.Protocol.Interfaces;
@@ -17,18 +18,21 @@ public class NltgDaemonService : BackgroundService
     private readonly IConfiguration _configuration;
     private readonly IFeeService _feeService;
     private readonly ILogger<NltgDaemonService> _logger;
+    private readonly INamedPipeIpcService _namedPipeIpcService;
     private readonly IPeerManager _peerManager;
     private readonly NodeOptions _nodeOptions;
     private readonly ISecureKeyManager _secureKeyManager;
 
     public NltgDaemonService(IBlockchainMonitor blockchainMonitor, IConfiguration configuration, IFeeService feeService,
-                             ILogger<NltgDaemonService> logger, IOptions<NodeOptions> nodeOptions,
-                             IPeerManager peerManager, ISecureKeyManager secureKeyManager)
+                             ILogger<NltgDaemonService> logger, INamedPipeIpcService namedPipeIpcService,
+                             IOptions<NodeOptions> nodeOptions, IPeerManager peerManager,
+                             ISecureKeyManager secureKeyManager)
     {
         _blockchainMonitor = blockchainMonitor;
         _configuration = configuration;
         _feeService = feeService;
         _logger = logger;
+        _namedPipeIpcService = namedPipeIpcService;
         _peerManager = peerManager;
         _nodeOptions = nodeOptions.Value;
         _secureKeyManager = secureKeyManager;
@@ -58,6 +62,9 @@ public class NltgDaemonService : BackgroundService
             // Start the blockchain monitor service
             await _blockchainMonitor.StartAsync(_secureKeyManager.HeightOfBirth, stoppingToken);
 
+            // Start the IPC server
+            await _namedPipeIpcService.StartAsync(stoppingToken);
+
             while (!stoppingToken.IsCancellationRequested)
                 await Task.Delay(1000, stoppingToken);
         }
@@ -72,7 +79,7 @@ public class NltgDaemonService : BackgroundService
         _logger.LogInformation("NLTG shutdown requested");
 
         await Task.WhenAll(_blockchainMonitor.StopAsync(), _feeService.StopAsync(), _peerManager.StopAsync(),
-                           base.StopAsync(cancellationToken));
+                           _namedPipeIpcService.StopAsync(), base.StopAsync(cancellationToken));
 
         _logger.LogInformation("NLTG daemon service stopped");
     }

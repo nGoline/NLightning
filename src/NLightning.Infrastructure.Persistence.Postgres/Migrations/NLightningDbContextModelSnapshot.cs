@@ -58,6 +58,14 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("index");
 
+                    b.Property<long>("AddressIndex")
+                        .HasColumnType("bigint")
+                        .HasColumnName("address_index");
+
+                    b.Property<byte>("AddressType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("address_type");
+
                     b.Property<long>("AmountSats")
                         .HasColumnType("bigint")
                         .HasColumnName("amount_sats");
@@ -66,8 +74,36 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("block_height");
 
+                    b.Property<bool>("IsAddressChange")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_address_change");
+
+                    b.Property<byte[]>("LockedToChannelId")
+                        .HasColumnType("bytea")
+                        .HasColumnName("locked_to_channel_id");
+
+                    b.Property<byte[]>("UsedInTransactionId")
+                        .HasColumnType("bytea")
+                        .HasColumnName("used_in_transaction_id");
+
                     b.HasKey("TransactionId", "Index")
                         .HasName("pk_utxos");
+
+                    b.HasIndex("AddressType")
+                        .HasDatabaseName("ix_utxos_address_type")
+                        .HasAnnotation("Npgsql:CreatedConcurrently", true);
+
+                    b.HasIndex("LockedToChannelId")
+                        .HasDatabaseName("ix_utxos_locked_to_channel_id")
+                        .HasAnnotation("Npgsql:CreatedConcurrently", true);
+
+                    b.HasIndex("UsedInTransactionId")
+                        .HasDatabaseName("ix_utxos_used_in_transaction_id")
+                        .HasAnnotation("Npgsql:CreatedConcurrently", true);
+
+                    b.HasIndex("AddressIndex", "IsAddressChange", "AddressType")
+                        .HasDatabaseName("ix_utxos_address_index_is_address_change_address_type")
+                        .HasAnnotation("Npgsql:CreatedConcurrently", true);
 
                     b.ToTable("utxos", (string)null);
                 });
@@ -90,12 +126,6 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("address");
-
-                    b.Property<long>("UtxoQty")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasDefaultValue(0L)
-                        .HasColumnName("utxo_qty");
 
                     b.HasKey("Index", "IsChange", "AddressType")
                         .HasName("pk_wallet_addresses");
@@ -213,6 +243,22 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
                         .HasColumnType("bytea")
                         .HasColumnName("channel_id");
 
+                    b.Property<byte?>("ChangeAddressAddressType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("change_address_address_type");
+
+                    b.Property<long?>("ChangeAddressIndex")
+                        .HasColumnType("bigint")
+                        .HasColumnName("change_address_index");
+
+                    b.Property<bool?>("ChangeAddressIsChange")
+                        .HasColumnType("boolean")
+                        .HasColumnName("change_address_is_change");
+
+                    b.Property<byte?>("ChangeAddressType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("change_address_type");
+
                     b.Property<long>("FundingAmountSatoshis")
                         .HasColumnType("bigint")
                         .HasColumnName("funding_amount_satoshis");
@@ -288,6 +334,9 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
 
                     b.HasIndex("PeerEntityNodeId")
                         .HasDatabaseName("ix_channels_peer_entity_node_id");
+
+                    b.HasIndex("ChangeAddressIndex", "ChangeAddressIsChange", "ChangeAddressAddressType")
+                        .HasDatabaseName("ix_channels_change_address_index_change_address_is_change_chan");
 
                     b.ToTable("channels", (string)null);
                 });
@@ -434,6 +483,18 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
                     b.ToTable("peers", (string)null);
                 });
 
+            modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.UtxoEntity", b =>
+                {
+                    b.HasOne("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", "WalletAddress")
+                        .WithMany("Utxos")
+                        .HasForeignKey("AddressIndex", "IsAddressChange", "AddressType")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_utxos_wallet_addresses_address_index_is_address_change_addr");
+
+                    b.Navigation("WalletAddress");
+                });
+
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WatchedTransactionEntity", b =>
                 {
                     b.HasOne("NLightning.Infrastructure.Persistence.Entities.Channel.ChannelEntity", null)
@@ -460,6 +521,13 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
                         .WithMany("Channels")
                         .HasForeignKey("PeerEntityNodeId")
                         .HasConstraintName("fk_channels_peers_peer_entity_node_id");
+
+                    b.HasOne("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", "ChangeAddress")
+                        .WithMany()
+                        .HasForeignKey("ChangeAddressIndex", "ChangeAddressIsChange", "ChangeAddressAddressType")
+                        .HasConstraintName("fk_channels_wallet_addresses_change_address_index_change_addre");
+
+                    b.Navigation("ChangeAddress");
                 });
 
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Channel.ChannelKeySetEntity", b =>
@@ -480,6 +548,11 @@ namespace NLightning.Infrastructure.Persistence.Postgres.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_htlcs_channels_channel_id");
+                });
+
+            modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", b =>
+                {
+                    b.Navigation("Utxos");
                 });
 
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Channel.ChannelEntity", b =>

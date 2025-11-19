@@ -3,8 +3,8 @@ using MessagePack;
 
 namespace NLightning.Daemon.Services.Ipc;
 
-using Interfaces;
-using NLightning.Transport.Ipc;
+using Daemon.Ipc.Interfaces;
+using Transport.Ipc;
 
 /// <summary>
 /// Length-prefixed MessagePack framing for IpcEnvelope.

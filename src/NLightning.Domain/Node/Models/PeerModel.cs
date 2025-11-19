@@ -5,6 +5,7 @@ namespace NLightning.Domain.Node.Models;
 using Channels.Models;
 using Crypto.ValueObjects;
 using Interfaces;
+using Options;
 using ValueObjects;
 
 public class PeerModel
@@ -26,6 +27,16 @@ public class PeerModel
             return _peerService is null
                        ? throw new NullReferenceException($"{nameof(PeerModel)}.{nameof(Features)} was null")
                        : _peerService.Features.GetNodeFeatures();
+        }
+    }
+
+    public FeatureOptions NegotiatedFeatures
+    {
+        get
+        {
+            return _peerService is null
+                       ? throw new NullReferenceException($"{nameof(PeerModel)}.{nameof(Features)} was null")
+                       : _peerService.Features;
         }
     }
 

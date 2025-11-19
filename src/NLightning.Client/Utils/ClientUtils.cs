@@ -14,8 +14,12 @@ public static class ClientUtils
         Console.WriteLine("  --help, -h, -?             Show this help message");
         Console.WriteLine();
         Console.WriteLine("Commands:");
-        Console.WriteLine("  node-info | info           Get node information via IPC");
-        Console.WriteLine("  connect <node>             Connect to a peer node");
+        Console.WriteLine("  info                         Get node information via IPC");
+        Console.WriteLine("  connect <node>               Connect to a peer node");
+        Console.WriteLine("  listpeers                    List all connected peers");
+        Console.WriteLine("  getaddress <p2tr|p2wpkh|all> Gets a unused address of the requested type");
+        Console.WriteLine("  walletbalance                Gets the wallet balance");
+        Console.WriteLine("  openchannel                  Open a channel to peer");
         Console.WriteLine();
         Console.WriteLine("Environment Variables:");
         Console.WriteLine("  NLTG_NETWORK               Network to use");

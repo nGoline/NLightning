@@ -4,6 +4,8 @@ using MessagePack.Resolvers;
 
 namespace NLightning.Transport.Ipc.MessagePack;
 
+using Domain.Bitcoin.ValueObjects;
+using Domain.Channels.ValueObjects;
 using Domain.Crypto.ValueObjects;
 using Domain.Money;
 using Domain.Node;
@@ -21,10 +23,15 @@ public class NLightningFormatterResolver : IFormatterResolver
     {
         _formatters[typeof(Hash)] = new HashFormatter();
         _formatters[typeof(BitcoinNetwork)] = new BitcoinNetworkFormatter();
+        _formatters[typeof(PeerAddressInfo?)] = new PeerAddressInfoNullableFormatter();
         _formatters[typeof(PeerAddressInfo)] = new PeerAddressInfoFormatter();
+        _formatters[typeof(CompactPubKey?)] = new CompactPubKeyNullableFormatter();
         _formatters[typeof(CompactPubKey)] = new CompactPubKeyFormatter();
         _formatters[typeof(FeatureSet)] = new FeatureSetFormatter();
         _formatters[typeof(LightningMoney)] = new LightningMoneyFormatter();
+        _formatters[typeof(SignedTransaction)] = new SignedTransactionFormatter();
+        _formatters[typeof(ChannelId)] = new ChannelIdFormatter();
+        _formatters[typeof(TxId)] = new TxIdFormatter();
     }
 
     public IMessagePackFormatter<T>? GetFormatter<T>()

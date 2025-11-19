@@ -5,14 +5,23 @@ namespace NLightning.Daemon.Contracts.Helpers;
 /// </summary>
 public static class CommandLineHelper
 {
+    public const string DashH = "-h";
+    public const string DashDashHelp = "--help";
+    public const string DashN = "-n";
+    public const string DashDashNetwork = "--network";
+    public const string DashDashNetworkEquals = "--network=";
+    public const string DashC = "-c";
+    public const string DashDashCookie = "--cookie";
+    public const string DashDashCookieEquals = "--cookie=";
+
     /// <summary>
     /// Parse command line arguments to check for help request
     /// </summary>
     public static bool IsHelpRequested(string[] args)
     {
         return args.Any(arg =>
-                            arg.Equals("--help", StringComparison.OrdinalIgnoreCase)
-                         || arg.Equals("-h", StringComparison.OrdinalIgnoreCase));
+                            arg.Equals(DashDashHelp, StringComparison.OrdinalIgnoreCase)
+                         || arg.Equals(DashH, StringComparison.OrdinalIgnoreCase));
     }
 
     public static string? GetCommand(string[] args)
@@ -52,40 +61,87 @@ public static class CommandLineHelper
         return cmdArgs.ToArray();
     }
 
-    public static string GetNetwork(string[] args)
+    public static string GetCookiePath(string[] args)
     {
-        var network = "mainnet"; // Default
+        string? network = null;
+        string? cookiePath = null;
 
         // Check command line args
         for (var i = 0; i < args.Length; i++)
         {
-            if (args[i].Equals("--network", StringComparison.OrdinalIgnoreCase) ||
-                args[i].Equals("-n", StringComparison.OrdinalIgnoreCase))
+            // Check for network
+            if (args[i].StartsWith(DashN) || args[i].StartsWith(DashDashNetwork, StringComparison.OrdinalIgnoreCase))
             {
-                if (i + 1 < args.Length)
+                if ((args[i].Equals(DashDashNetwork, StringComparison.OrdinalIgnoreCase) || args[i].Equals(DashN))
+                 && i + 1 < args.Length)
                 {
                     network = args[i + 1];
+                }
+                else if (args[i].StartsWith(DashDashNetworkEquals, StringComparison.OrdinalIgnoreCase))
+                {
+                    network = args[i][DashDashNetworkEquals.Length..];
+                }
+
+                if (network is not null)
                     break;
+            }
+            else if (args[i].StartsWith(DashC) || // Check for cookie
+                     args[i].StartsWith(DashDashCookie, StringComparison.OrdinalIgnoreCase))
+            {
+                if ((args[i].Equals(DashDashCookie, StringComparison.OrdinalIgnoreCase) || args[i].Equals(DashC))
+                 && i + 1 < args.Length)
+                {
+                    cookiePath = args[i];
+                }
+                else if (args[i].StartsWith(DashDashCookieEquals, StringComparison.OrdinalIgnoreCase))
+                {
+                    cookiePath = args[i][DashDashCookieEquals.Length..];
+                }
+
+                if (cookiePath is not null)
+                    break;
+            }
+        }
+
+        // Check the environment if no args provided
+        if (cookiePath is null && network is null)
+        {
+            var envNetwork = Environment.GetEnvironmentVariable("NLTG_NETWORK");
+            if (!string.IsNullOrEmpty(envNetwork))
+            {
+                network = envNetwork;
+            }
+            else
+            {
+                var envCookie = Environment.GetEnvironmentVariable("NLTG_COOKIE");
+                if (!string.IsNullOrEmpty(envCookie))
+                {
+                    cookiePath = envCookie;
                 }
             }
-
-            if (!args[i].StartsWith("--network=", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            network = args[i]["--network=".Length..];
-            break;
         }
 
-        // Check environment variable if not found in args
-        var envNetwork = Environment.GetEnvironmentVariable("NLTG_NETWORK");
-        if (!string.IsNullOrEmpty(envNetwork))
+        // Go with default paths if no environments provided
+        if (cookiePath is not null)
+            return ExtractDirectoryFromCookiePath(cookiePath);
+
+        var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        cookiePath = Path.Combine(homeDir, ".nltg", network ?? "mainnet");
+        return Directory.Exists(cookiePath) ? cookiePath : throw new InvalidOperationException("Cookie not found");
+    }
+
+    private static string ExtractDirectoryFromCookiePath(string cookiePath)
+    {
+        cookiePath = Path.GetFullPath(cookiePath);
+        if (cookiePath.EndsWith(".cookie", StringComparison.OrdinalIgnoreCase))
         {
-            network = envNetwork;
+            cookiePath = Path.GetDirectoryName(cookiePath) ??
+                         throw new InvalidOperationException("Cookie not found");
         }
+        else if (cookiePath.EndsWith(Path.DirectorySeparatorChar))
+            cookiePath = cookiePath[..^1];
 
-        return network;
+        return Directory.Exists(cookiePath) ? cookiePath : throw new InvalidOperationException("Cookie not found");
     }
 
     private static bool IsOption(string arg) => arg.StartsWith("-n")

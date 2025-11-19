@@ -51,13 +51,40 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
                     b.Property<long>("Index")
                         .HasColumnType("bigint");
 
+                    b.Property<long>("AddressIndex")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte>("AddressType")
+                        .HasColumnType("tinyint");
+
                     b.Property<long>("AmountSats")
                         .HasColumnType("bigint");
 
                     b.Property<long>("BlockHeight")
                         .HasColumnType("bigint");
 
+                    b.Property<bool>("IsAddressChange")
+                        .HasColumnType("bit");
+
+                    b.Property<byte[]>("LockedToChannelId")
+                        .HasColumnType("varbinary(32)");
+
+                    b.Property<byte[]>("UsedInTransactionId")
+                        .HasColumnType("varbinary(900)");
+
                     b.HasKey("TransactionId", "Index");
+
+                    b.HasIndex("AddressType")
+                        .HasAnnotation("SqlServer:Online", true);
+
+                    b.HasIndex("LockedToChannelId")
+                        .HasAnnotation("SqlServer:Online", true);
+
+                    b.HasIndex("UsedInTransactionId")
+                        .HasAnnotation("SqlServer:Online", true);
+
+                    b.HasIndex("AddressIndex", "IsAddressChange", "AddressType")
+                        .HasAnnotation("SqlServer:Online", true);
 
                     b.ToTable("Utxos");
                 });
@@ -76,11 +103,6 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
                     b.Property<string>("Address")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("UtxoQty")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasDefaultValue(0L);
 
                     b.HasKey("Index", "IsChange", "AddressType");
 
@@ -172,6 +194,18 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
                     b.Property<byte[]>("ChannelId")
                         .HasColumnType("varbinary(32)");
 
+                    b.Property<byte?>("ChangeAddressAddressType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<long?>("ChangeAddressIndex")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool?>("ChangeAddressIsChange")
+                        .HasColumnType("bit");
+
+                    b.Property<byte?>("ChangeAddressType")
+                        .HasColumnType("tinyint");
+
                     b.Property<long>("FundingAmountSatoshis")
                         .HasColumnType("bigint");
 
@@ -228,6 +262,8 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
                     b.HasKey("ChannelId");
 
                     b.HasIndex("PeerEntityNodeId");
+
+                    b.HasIndex("ChangeAddressIndex", "ChangeAddressIsChange", "ChangeAddressAddressType");
 
                     b.ToTable("Channels");
                 });
@@ -344,6 +380,17 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
                     b.ToTable("Peers");
                 });
 
+            modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.UtxoEntity", b =>
+                {
+                    b.HasOne("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", "WalletAddress")
+                        .WithMany("Utxos")
+                        .HasForeignKey("AddressIndex", "IsAddressChange", "AddressType")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WalletAddress");
+                });
+
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WatchedTransactionEntity", b =>
                 {
                     b.HasOne("NLightning.Infrastructure.Persistence.Entities.Channel.ChannelEntity", null)
@@ -367,6 +414,12 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
                     b.HasOne("NLightning.Infrastructure.Persistence.Entities.Node.PeerEntity", null)
                         .WithMany("Channels")
                         .HasForeignKey("PeerEntityNodeId");
+
+                    b.HasOne("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", "ChangeAddress")
+                        .WithMany()
+                        .HasForeignKey("ChangeAddressIndex", "ChangeAddressIsChange", "ChangeAddressAddressType");
+
+                    b.Navigation("ChangeAddress");
                 });
 
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Channel.ChannelKeySetEntity", b =>
@@ -385,6 +438,11 @@ namespace NLightning.Infrastructure.Persistence.SqlServer.Migrations
                         .HasForeignKey("ChannelId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Bitcoin.WalletAddressEntity", b =>
+                {
+                    b.Navigation("Utxos");
                 });
 
             modelBuilder.Entity("NLightning.Infrastructure.Persistence.Entities.Channel.ChannelEntity", b =>

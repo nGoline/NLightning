@@ -8,7 +8,7 @@ using Domain.Bitcoin.Enums;
 /// Request for Get Address command
 /// </summary>
 [MessagePackObject]
-public class GetAddressIpcRequest
+public sealed class GetAddressIpcRequest
 {
     [Key(0)] public AddressType AddressType { get; set; } = AddressType.P2Wpkh;
 }

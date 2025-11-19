@@ -33,7 +33,7 @@ public static class NodeConfigurationExtensions
     /// </summary>
     public static IHostBuilder ConfigureNltg(this IHostBuilder hostBuilder, string[] args)
     {
-        var config = ReadInitialConfiguration(args);
+        var (config, _, _) = ReadInitialConfiguration(args);
 
         // Configure the host builder
         return hostBuilder
@@ -50,7 +50,7 @@ public static class NodeConfigurationExtensions
                });
     }
 
-    public static IConfiguration ReadInitialConfiguration(string[] args)
+    public static (IConfiguration, string, string) ReadInitialConfiguration(string[] args)
     {
         // Get network from the command line or environment variable first
         var initialConfig = new ConfigurationBuilder()
@@ -61,33 +61,43 @@ public static class NodeConfigurationExtensions
 
         // Check for a custom config path first
         var configPath = initialConfig["config"] ?? initialConfig["c"];
+        var configFile = configPath;
         var usingCustomConfig = !string.IsNullOrEmpty(configPath);
 
         if (usingCustomConfig)
         {
             configPath = Path.GetFullPath(configPath!);
-            if (!File.Exists(configPath))
+            if (!configPath.EndsWith("json", StringComparison.OrdinalIgnoreCase))
+                configFile = Path.Combine(configPath, "appsettings.json");
+            else
+                configPath = Path.GetDirectoryName(configPath);
+
+            if (!File.Exists(configFile))
             {
-                Log.Warning("Custom configuration file not found at {ConfigPath}", configPath);
+                Log.Warning("Custom configuration file not found at {configFile}", configFile);
                 usingCustomConfig = false;
             }
+
+            initialConfig = new ConfigurationBuilder()
+                           .AddJsonFile(configFile!, optional: false, reloadOnChange: false)
+                           .Build();
+
+            network = initialConfig["Node:Network"] ?? "mainnet";
         }
 
         // If no custom path, use default ~/.nltg/{network}/appsettings.json
         if (!usingCustomConfig)
         {
             var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var configDir = Path.Combine(homeDir, ".nltg", network);
-            configPath = Path.Combine(configDir, "appsettings.json");
+            configPath = Path.Combine(homeDir, ".nltg", network);
+            configFile = Path.Combine(configPath, "appsettings.json");
 
             // Ensure directory exists
-            Directory.CreateDirectory(configDir);
+            Directory.CreateDirectory(configPath);
 
             // Create default config if none exists
-            if (!File.Exists(configPath))
-            {
-                File.WriteAllText(configPath, CreateDefaultConfigJson());
-            }
+            if (!File.Exists(configFile))
+                File.WriteAllText(configFile, CreateDefaultConfigJson());
         }
 
         // Log startup info using bootstrap logger
@@ -97,11 +107,13 @@ public static class NodeConfigurationExtensions
         var config = new ConfigurationBuilder();
         config.Sources.Clear();
 
-        return config
-              .AddJsonFile(configPath!, optional: false, reloadOnChange: false)
-              .AddEnvironmentVariables("NLTG_")
-              .AddCommandLine(args)
-              .Build();
+        var configuration = config
+                           .AddJsonFile(configFile!, optional: false, reloadOnChange: false)
+                           .AddEnvironmentVariables("NLTG_")
+                           .AddCommandLine(args)
+                           .Build();
+
+        return (configuration, network, configPath!);
     }
 
     /// <summary>
@@ -166,7 +178,8 @@ public static class NodeConfigurationExtensions
                  "Database": {
                    "Provider": "Sqlite",
                    "ConnectionString": "Data Source=nltg.db;Cache=Shared",
-                   "RunMigrations": false
+                   "RunMigrations": false,
+                   "EnableSensitiveQueryLogging": false
                  },
                  "Bitcoin": {
                    "RpcEndpoint": "http://localhost:8332",

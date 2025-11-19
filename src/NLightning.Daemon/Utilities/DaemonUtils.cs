@@ -317,12 +317,9 @@ public partial class DaemonUtils
     /// <summary>
     /// Gets the path for the PID file
     /// </summary>
-    public static string GetPidFilePath(string network)
+    public static string GetPidFilePath(string configPath)
     {
-        var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var networkDir = Path.Combine(homeDir, NodeConstants.DaemonFolder, network);
-        Directory.CreateDirectory(networkDir); // Ensure directory exists
-        return Path.Combine(networkDir, NodeConstants.PidFile);
+        return Path.Combine(configPath, NodeConstants.PidFile);
     }
 
     /// <summary>

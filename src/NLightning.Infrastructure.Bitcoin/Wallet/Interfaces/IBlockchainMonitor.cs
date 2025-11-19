@@ -11,6 +11,7 @@ public interface IBlockchainMonitor
     event EventHandler<NewBlockEventArgs> OnNewBlockDetected;
     event EventHandler<TransactionConfirmedEventArgs> OnTransactionConfirmed;
 
+    Task PublishAndWatchTransactionAsync(ChannelId channelId, SignedTransaction signedTransaction, uint requiredDepth);
     Task WatchTransactionAsync(ChannelId channelId, TxId txId, uint requiredDepth);
     void WatchBitcoinAddress(WalletAddressModel walletAddress);
 

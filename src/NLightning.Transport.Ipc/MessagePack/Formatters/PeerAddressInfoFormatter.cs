@@ -6,6 +6,7 @@ namespace NLightning.Transport.Ipc.MessagePack.Formatters;
 
 using Domain.Node.ValueObjects;
 
+[ExcludeFormatterFromSourceGeneratedResolver]
 public class PeerAddressInfoFormatter : IMessagePackFormatter<PeerAddressInfo>
 {
     public void Serialize(ref MessagePackWriter writer, PeerAddressInfo value, MessagePackSerializerOptions options)

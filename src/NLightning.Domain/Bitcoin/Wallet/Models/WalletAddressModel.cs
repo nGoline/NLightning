@@ -1,6 +1,6 @@
-using NLightning.Domain.Bitcoin.Enums;
-
 namespace NLightning.Domain.Bitcoin.Wallet.Models;
+
+using Enums;
 
 public sealed class WalletAddressModel
 {
@@ -8,20 +8,13 @@ public sealed class WalletAddressModel
     public uint Index { get; }
     public bool IsChange { get; }
     public string Address { get; }
-    public uint UtxoQty { get; private set; }
 
-    public WalletAddressModel(AddressType addressType, uint index, bool isChange, string address, uint utxoQty = 0)
+    public WalletAddressModel(AddressType addressType, uint index, bool isChange, string address)
     {
         AddressType = addressType;
         Index = index;
         IsChange = isChange;
         Address = address;
-        UtxoQty = utxoQty;
-    }
-
-    public void IncrementUtxoQty()
-    {
-        UtxoQty++;
     }
 
     public override string ToString()

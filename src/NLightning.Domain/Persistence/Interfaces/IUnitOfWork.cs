@@ -1,11 +1,11 @@
-using NLightning.Domain.Bitcoin.Wallet.Models;
-using NLightning.Domain.Node.Models;
-
 namespace NLightning.Domain.Persistence.Interfaces;
 
 using Bitcoin.Interfaces;
+using Bitcoin.ValueObjects;
+using Bitcoin.Wallet.Models;
 using Channels.Interfaces;
 using Node.Interfaces;
+using Node.Models;
 
 public interface IUnitOfWork : IDisposable
 {
@@ -26,6 +26,7 @@ public interface IUnitOfWork : IDisposable
 
     Task<ICollection<PeerModel>> GetPeersForStartupAsync();
     void AddUtxo(UtxoModel utxoModel);
+    void TrySpendUtxo(TxId transactionId, uint index);
 
     void SaveChanges();
     Task SaveChangesAsync();

@@ -17,9 +17,9 @@ Console.CancelKeyPress += (_, e) =>
 };
 
 // Get network for the NamedPipe file path
-var network = CommandLineHelper.GetNetwork(args);
-var namedPipeFilePath = NodeUtils.GetNamedPipeFilePath(network);
-var cookieFilePath = NodeUtils.GetCookieFilePath(network);
+var cookiePath = CommandLineHelper.GetCookiePath(args);
+var namedPipeFilePath = NodeUtils.GetNamedPipeFilePath(cookiePath);
+var cookieFilePath = NodeUtils.GetCookieFilePath(cookiePath);
 
 var cmd = CommandLineHelper.GetCommand(args) ?? "node-info";
 
@@ -63,6 +63,11 @@ try
         case "wallet-balance":
             var balance = await client.GetWalletBalance(cts.Token);
             new WalletBalancePrinter().Print(balance);
+            break;
+        case "openchannel":
+        case "open-channel":
+            var channel = await client.OpenChannelAsync(commandArgs[0], commandArgs[1], cts.Token);
+            new OpenChannelPrinter().Print(channel);
             break;
         default:
             Console.Error.WriteLine($"Unknown command: {cmd}");

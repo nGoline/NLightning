@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace NLightning.Daemon.Services.Ipc;
 
-using Interfaces;
+using Daemon.Ipc.Interfaces;
 
 /// <summary>
 /// Cookie-file-based authenticator (Bitcoin Core style). Uses constant-time comparison.

@@ -87,10 +87,10 @@ public interface IMessageFactory
                                                       BitcoinScript? shutdownScriptPubkey = null,
                                                       byte[]? channelType = null, bool requireConfirmedInputs = false);
 
-    FundingCreatedMessage CreatedFundingCreatedMessage(ChannelId temporaryChannelId, TxId fundingTxId,
-                                                       ushort fundingOutputIndex, CompactSignature signature);
+    FundingCreatedMessage CreateFundingCreatedMessage(ChannelId temporaryChannelId, TxId fundingTxId,
+                                                      ushort fundingOutputIndex, CompactSignature signature);
 
-    FundingSignedMessage CreatedFundingSignedMessage(ChannelId channelId, CompactSignature signature);
+    FundingSignedMessage CreateFundingSignedMessage(ChannelId channelId, CompactSignature signature);
 
     UpdateAddHtlcMessage CreateUpdateAddHtlcMessage(ChannelId channelId, ulong id, ulong amountMsat,
                                                     ReadOnlyMemory<byte> paymentHash, uint cltvExpiry,

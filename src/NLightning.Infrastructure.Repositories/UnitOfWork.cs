@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using NLightning.Domain.Bitcoin.Wallet.Models;
 
 namespace NLightning.Infrastructure.Repositories;
 
@@ -7,6 +6,8 @@ using Database.Bitcoin;
 using Database.Channel;
 using Database.Node;
 using Domain.Bitcoin.Interfaces;
+using Domain.Bitcoin.ValueObjects;
+using Domain.Bitcoin.Wallet.Models;
 using Domain.Channels.Interfaces;
 using Domain.Channels.Models;
 using Domain.Crypto.Hashes;
@@ -115,8 +116,12 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    public void SpendUtxo(UtxoModel utxoModel)
+    public void TrySpendUtxo(TxId transactionId, uint index)
     {
+        // Check if utxo exists in memory
+        if (!_utxoMemoryRepository.TryGetUtxo(transactionId, index, out var utxoModel))
+            return;
+
         try
         {
             _utxoMemoryRepository.Spend(utxoModel);

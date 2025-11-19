@@ -2,6 +2,8 @@ using MessagePack;
 
 namespace NLightning.Transport.Ipc;
 
+using Domain.Client.Enums;
+
 /// <summary>
 /// Envelope for all IPC messages, request and response, encoded with MessagePack.
 /// </summary>
@@ -9,7 +11,7 @@ namespace NLightning.Transport.Ipc;
 public sealed class IpcEnvelope
 {
     [Key(0)] public int Version { get; set; } = 1;
-    [Key(1)] public NodeIpcCommand Command { get; init; }
+    [Key(1)] public ClientCommand Command { get; init; }
 
     [Key(2)] public Guid CorrelationId { get; set; } = Guid.NewGuid();
 

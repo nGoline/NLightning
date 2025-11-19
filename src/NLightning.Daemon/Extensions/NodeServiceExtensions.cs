@@ -8,11 +8,17 @@ namespace NLightning.Daemon.Extensions;
 
 using Application;
 using Contracts.Utilities;
+using Daemon.Ipc.Handlers;
+using Daemon.Ipc.Interfaces;
 using Domain.Bitcoin.Interfaces;
 using Domain.Bitcoin.Transactions.Factories;
 using Domain.Bitcoin.Transactions.Interfaces;
 using Domain.Channels.Factories;
 using Domain.Channels.Interfaces;
+using Domain.Channels.Validators;
+using Domain.Client.Interfaces;
+using Domain.Client.Requests;
+using Domain.Client.Responses;
 using Domain.Crypto.Hashes;
 using Domain.Node.Options;
 using Domain.Protocol.Interfaces;
@@ -37,7 +43,8 @@ public static class NodeServiceExtensions
     /// <summary>
     /// Registers all NLTG application services for dependency injection
     /// </summary>
-    public static IHostBuilder ConfigureNltgServices(this IHostBuilder hostBuilder, SecureKeyManager secureKeyManager)
+    public static IHostBuilder ConfigureNltgServices(this IHostBuilder hostBuilder, SecureKeyManager secureKeyManager,
+                                                     string configPath)
     {
         return hostBuilder.ConfigureServices((hostContext, services) =>
         {
@@ -50,7 +57,22 @@ public static class NodeServiceExtensions
             // Register the main daemon service
             services.AddHostedService<NltgDaemonService>();
 
+            // Register Client Handlers
+            services
+               .AddScoped<IClientCommandHandler<OpenChannelClientRequest, OpenChannelClientResponse>,
+                    OpenChannelClientHandler>();
+
             // Register IPC server and handlers
+            services.AddSingleton<INamedPipeIpcService>(sp =>
+            {
+                var ipcAuthenticator = sp.GetRequiredService<IIpcAuthenticator>();
+                var ipcFraming = sp.GetRequiredService<IIpcFraming>();
+                var logger = sp.GetRequiredService<ILogger<NamedPipeIpcService>>();
+                var nodeOptions = sp.GetRequiredService<IOptions<NodeOptions>>();
+                var ipcRequestRouter = sp.GetRequiredService<IIpcRequestRouter>();
+                return new NamedPipeIpcService(ipcAuthenticator, configPath, ipcFraming, logger, nodeOptions,
+                                               ipcRequestRouter);
+            });
             services.AddSingleton<IIpcFraming, LengthPrefixedIpcFraming>();
             services.AddSingleton<IIpcRequestRouter, IpcRequestRouter>();
             services.AddSingleton<INodeInfoQueryService, NodeInfoQueryService>();
@@ -59,14 +81,13 @@ public static class NodeServiceExtensions
             services.AddSingleton<IIpcCommandHandler, ListPeersIpcHandler>();
             services.AddSingleton<IIpcCommandHandler, GetAddressIpcHandler>();
             services.AddSingleton<IIpcCommandHandler, GetWalletBalanceIpcHandler>();
+            services.AddSingleton<IIpcCommandHandler, OpenChannelIpcHandler>();
             services.AddSingleton<IIpcAuthenticator>(sp =>
             {
-                var nodeOptions = sp.GetRequiredService<IOptions<NodeOptions>>().Value;
-                var cookiePath = NodeUtils.GetCookieFilePath(nodeOptions.BitcoinNetwork);
+                var cookiePath = NodeUtils.GetCookieFilePath(configPath);
                 var logger = sp.GetRequiredService<ILogger<CookieFileAuthenticator>>();
                 return new CookieFileAuthenticator(cookiePath, logger);
             });
-            services.AddHostedService<NamedPipeIpcHostedService>();
 
             // Add HttpClient for FeeService with configuration
             services.AddHttpClient<IFeeService, FeeService>(client =>
@@ -76,16 +97,25 @@ public static class NodeServiceExtensions
             });
 
             // Singleton services (one instance throughout the application)
+            services.AddSingleton<IChannelOpenValidator>(sp =>
+            {
+                var nodeOptions = sp.GetRequiredService<IOptions<NodeOptions>>().Value;
+                return new ChannelOpenValidator(nodeOptions);
+            });
             services.AddSingleton<ISecureKeyManager>(secureKeyManager);
             services.AddSingleton<IChannelFactory>(sp =>
             {
+                var channelIdFactory = sp.GetRequiredService<IChannelIdFactory>();
+                var channelOpenValidator = sp.GetRequiredService<IChannelOpenValidator>();
                 var feeService = sp.GetRequiredService<IFeeService>();
                 var lightningSigner = sp.GetRequiredService<ILightningSigner>();
                 var nodeOptions = sp.GetRequiredService<IOptions<NodeOptions>>().Value;
                 var sha256 = sp.GetRequiredService<ISha256>();
-                return new ChannelFactory(feeService, lightningSigner, nodeOptions, sha256);
+                return new ChannelFactory(channelIdFactory, channelOpenValidator, feeService, lightningSigner,
+                                          nodeOptions, sha256);
             });
             services.AddSingleton<ICommitmentTransactionModelFactory, CommitmentTransactionModelFactory>();
+            services.AddSingleton<IFundingTransactionModelFactory, FundingTransactionModelFactory>();
 
             // Add the Signer
             services.AddSingleton<ILightningSigner>(serviceProvider =>
@@ -94,10 +124,11 @@ public static class NodeServiceExtensions
                 var keyDerivationService = serviceProvider.GetRequiredService<IKeyDerivationService>();
                 var logger = serviceProvider.GetRequiredService<ILogger<LocalLightningSigner>>();
                 var nodeOptions = serviceProvider.GetRequiredService<IOptions<NodeOptions>>().Value;
+                var utxoMemoryRepository = serviceProvider.GetRequiredService<IUtxoMemoryRepository>();
 
                 // Create the signer with the correct network
                 return new LocalLightningSigner(fundingOutputBuilder, keyDerivationService, logger, nodeOptions,
-                                                secureKeyManager);
+                                                secureKeyManager, utxoMemoryRepository);
             });
 
             // Add the Application services

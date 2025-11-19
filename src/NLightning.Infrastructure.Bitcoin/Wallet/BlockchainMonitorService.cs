@@ -120,9 +120,7 @@ public class BlockchainMonitorService : IBlockchainMonitor
     public async Task StopAsync()
     {
         if (_cts is null)
-        {
             throw new InvalidOperationException("Service is not running");
-        }
 
         await _cts.CancelAsync();
 
@@ -139,6 +137,23 @@ public class BlockchainMonitorService : IBlockchainMonitor
         }
 
         CleanupZmqSockets();
+    }
+
+    public async Task PublishAndWatchTransactionAsync(ChannelId channelId, SignedTransaction signedTransaction,
+                                                      uint requiredDepth)
+    {
+        _logger.LogInformation(
+            "Publishing transaction {TxId} for {RequiredDepth} confirmations for channel {channelId}",
+            signedTransaction.TxId, requiredDepth, channelId);
+
+        // Convert the tx
+        var transaction = Transaction.Load(signedTransaction.RawTxBytes, _network);
+
+        // Start watching the tx
+        await WatchTransactionAsync(channelId, signedTransaction.TxId, requiredDepth);
+
+        // Publish the tx
+        await _bitcoinChainService.SendTransactionAsync(transaction);
     }
 
     public async Task WatchTransactionAsync(ChannelId channelId, TxId txId, uint requiredDepth)
@@ -401,7 +416,7 @@ public class BlockchainMonitorService : IBlockchainMonitor
             CheckBlockForWatchedTransactions(block.Transactions, height, uow);
 
             // Check for deposits in this block
-            CheckBlockForDeposits(block.Transactions, height, uow);
+            CheckBlockForWalletMovement(block.Transactions, height, uow);
 
             // Update blockchain state
             _blockchainState.UpdateState(blockHash.ToBytes(), height);
@@ -472,19 +487,19 @@ public class BlockchainMonitorService : IBlockchainMonitor
         }
     }
 
-    private void CheckBlockForDeposits(List<Transaction> transactions, uint blockHeight, IUnitOfWork uow)
+    private void CheckBlockForWalletMovement(List<Transaction> transactions, uint blockHeight, IUnitOfWork uow)
     {
         if (_watchedAddresses.IsEmpty)
             return;
 
-        _logger.LogDebug("Checking {AddressCount} watched addresses for deposits in block {Height}",
+        _logger.LogDebug("Checking {AddressCount} watched addresses for deposits/spends in block {Height}",
                          _watchedAddresses.Count, blockHeight);
 
         foreach (var transaction in transactions)
         {
             var txId = transaction.GetHash();
 
-            // Check each output
+            // Check each output for deposits
             for (var i = 0; i < transaction.Outputs.Count; i++)
             {
                 var output = transaction.Outputs[i];
@@ -499,18 +514,19 @@ public class BlockchainMonitorService : IBlockchainMonitor
                     "Deposit detected: {amount} to address {destinationAddress} in tx {txId} at block {height}",
                     output.Value, destinationAddress, txId, blockHeight);
 
-                watchedAddress.IncrementUtxoQty();
-                uow.WalletAddressesDbRepository.UpdateAsync(watchedAddress);
-
                 // Save Utxo to the database
                 var utxo = new UtxoModel(txId.ToBytes(), (uint)i, LightningMoney.Satoshis(output.Value.Satoshi),
-                                         blockHeight);
+                                         blockHeight, watchedAddress);
                 uow.AddUtxo(utxo);
 
                 if (!_watchedAddresses.TryRemove(destinationAddress.ToString(), out _))
                     _logger.LogError("Unable to remove watched address {DestinationAddress} from the list",
                                      destinationAddress);
             }
+
+            // Check each input for spent utxos
+            foreach (var input in transaction.Inputs)
+                uow.TrySpendUtxo(new TxId(input.PrevOut.Hash.ToBytes()), input.PrevOut.N);
         }
     }
 
@@ -557,11 +573,12 @@ public class BlockchainMonitorService : IBlockchainMonitor
     {
         _logger.LogInformation("Loading Utxo set");
 
-        var utxoSet = (await uow.UtxoDbRepository.GetAllAsync()).ToList();
+        var utxoSet = (await uow.UtxoDbRepository.GetUnspentAsync()).ToList();
         if (utxoSet.Count > 0)
         {
-            var utxoMemoryRepository = _serviceProvider.GetService<IUtxoMemoryRepository>()
-                                    ?? throw new InvalidOperationException("UtxoMemoryRepository not found");
+            var utxoMemoryRepository = _serviceProvider.GetService<IUtxoMemoryRepository>() ??
+                                       throw new InvalidOperationException(
+                                           $"Error getting required service {nameof(IUtxoMemoryRepository)}");
             utxoMemoryRepository.Load(utxoSet);
         }
     }

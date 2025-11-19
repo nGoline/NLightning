@@ -276,6 +276,17 @@ public class FeatureSet
     /// </remarks>
     public bool HasFeature(Feature feature) => IsFeatureSet(feature, false) || IsFeatureSet(feature, true);
 
+    public byte[]? GetBytes()
+    {
+        var lastIndexOfOne = GetLastIndexOfOne(FeatureFlags);
+        if (lastIndexOfOne == -1)
+            return null;
+
+        var bytes = new byte[lastIndexOfOne];
+        FeatureFlags.CopyTo(bytes, 0);
+        return bytes;
+    }
+
     /// <summary>
     /// Deserializes the features from a byte array.
     /// </summary>

@@ -63,22 +63,33 @@ public sealed class PeerManager : IPeerManager
         var peers = await uow.GetPeersForStartupAsync();
         foreach (var peer in peers)
         {
-            _ = await ConnectToPeerAsync(peer.PeerAddressInfo, uow);
-            if (!_peers.TryGetValue(peer.NodeId, out _))
+            try
+            {
+                _ = await ConnectToPeerAsync(peer.PeerAddressInfo, uow);
+                if (!_peers.TryGetValue(peer.NodeId, out _))
+                {
+                    _logger.LogWarning("Unable to connect to peer {PeerId} on startup", peer.NodeId);
+                    // TODO: Handle this case, maybe retry or log more details
+                    continue;
+                }
+
+                // Register channels with peer
+                if (peer.Channels is not { Count: > 0 })
+                    continue;
+
+                // Only register channels that are not closed or stale
+                foreach (var channel in peer.Channels.Where(c => c.State != ChannelState.Closed))
+                    // We don't care about the result here, as we just want to register the existing channels
+                    _ = _channelManager.RegisterExistingChannelAsync(channel);
+            }
+            catch (ConnectionException)
             {
                 _logger.LogWarning("Unable to connect to peer {PeerId} on startup", peer.NodeId);
-                // TODO: Handle this case, maybe retry or log more details
-                continue;
             }
-
-            // Register channels with peer
-            if (peer.Channels is not { Count: > 0 })
-                continue;
-
-            // Only register channels that are not closed or stale
-            foreach (var channel in peer.Channels.Where(c => c.State != ChannelState.Closed))
-                // We don't care about the result here, as we just want to register the existing channels
-                _ = _channelManager.RegisterExistingChannelAsync(channel);
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error connecting to peer {PeerId} on startup", peer.NodeId);
+            }
         }
 
         await uow.SaveChangesAsync();
@@ -154,6 +165,11 @@ public sealed class PeerManager : IPeerManager
     public List<PeerModel> ListPeers()
     {
         return _peers.Values.ToList();
+    }
+
+    public PeerModel? GetPeer(CompactPubKey peerId)
+    {
+        return _peers.GetValueOrDefault(peerId);
     }
 
     private async Task<PeerModel> ConnectToPeerAsync(PeerAddressInfo peerAddressInfo, IUnitOfWork uow)

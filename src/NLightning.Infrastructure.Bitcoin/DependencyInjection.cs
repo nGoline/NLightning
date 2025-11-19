@@ -1,16 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
-using NLightning.Infrastructure.Bitcoin.Builders.Interfaces;
-using NLightning.Infrastructure.Bitcoin.Wallet;
-using NLightning.Infrastructure.Bitcoin.Wallet.Interfaces;
 
 namespace NLightning.Infrastructure.Bitcoin;
 
 using Builders;
+using Builders.Interfaces;
 using Crypto.Functions;
 using Domain.Protocol.Interfaces;
 using Infrastructure.Crypto.Interfaces;
 using Protocol.Factories;
 using Services;
+using Wallet;
+using Wallet.Interfaces;
 
 /// <summary>
 /// Extension methods for setting up Bitcoin infrastructure services in an IServiceCollection.
@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddSingleton<ICommitmentTransactionBuilder, CommitmentTransactionBuilder>();
         services.AddSingleton<IEcdh, Ecdh>();
         services.AddSingleton<IFundingOutputBuilder, FundingOutputBuilder>();
+        services.AddSingleton<IFundingTransactionBuilder, FundingTransactionBuilder>();
         services.AddSingleton<IKeyDerivationService, KeyDerivationService>();
         services.AddSingleton<ITlvConverterFactory, TlvConverterFactory>();
 
