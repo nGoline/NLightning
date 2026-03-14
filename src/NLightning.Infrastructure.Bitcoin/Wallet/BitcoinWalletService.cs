@@ -14,19 +14,23 @@ using Interfaces;
 
 public class BitcoinWalletService : IBitcoinWalletService
 {
+    private readonly IBlockchainMonitor _blockchainMonitor;
     private readonly ILogger<BitcoinWalletService> _logger;
     private readonly Network _network;
     private readonly ISecureKeyManager _secureKeyManager;
     private readonly IUnitOfWork _uow;
 
-    public BitcoinWalletService(ILogger<BitcoinWalletService> logger, IOptions<NodeOptions> nodeOptions,
-                                ISecureKeyManager secureKeyManager, IUnitOfWork uow)
+    public BitcoinWalletService(IBlockchainMonitor blockchainMonitor, ILogger<BitcoinWalletService> logger,
+                                IOptions<NodeOptions> nodeOptions, ISecureKeyManager secureKeyManager,
+                                IUnitOfWork uow)
     {
+        _blockchainMonitor = blockchainMonitor;
         _logger = logger;
         _secureKeyManager = secureKeyManager;
         _uow = uow;
 
         _network = Network.GetNetwork(nodeOptions.Value.BitcoinNetwork) ?? Network.Main;
+        _logger.LogInformation("BitcoinWalletService network: {Network} (config: {ConfigNetwork})", _network, nodeOptions.Value.BitcoinNetwork);
     }
 
     public async Task<WalletAddressModel> GetUnusedAddressAsync(AddressType addressType, bool isChange)
@@ -72,6 +76,12 @@ public class BitcoinWalletService : IBitcoinWalletService
 
         _uow.WalletAddressesDbRepository.AddRange(addressList);
         await _uow.SaveChangesAsync();
+
+        // Register all newly generated addresses with blockchain monitor
+        foreach (var address in addressList)
+        {
+            _blockchainMonitor.WatchBitcoinAddress(address);
+        }
 
         return addressList[0];
     }

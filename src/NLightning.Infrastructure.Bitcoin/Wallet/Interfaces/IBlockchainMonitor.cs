@@ -10,6 +10,7 @@ public interface IBlockchainMonitor
     uint LastProcessedBlockHeight { get; }
     event EventHandler<NewBlockEventArgs> OnNewBlockDetected;
     event EventHandler<TransactionConfirmedEventArgs> OnTransactionConfirmed;
+    event EventHandler<WalletMovementEventArgs>? OnWalletMovementDetected;
 
     Task PublishAndWatchTransactionAsync(ChannelId channelId, SignedTransaction signedTransaction, uint requiredDepth);
     Task WatchTransactionAsync(ChannelId channelId, TxId txId, uint requiredDepth);
