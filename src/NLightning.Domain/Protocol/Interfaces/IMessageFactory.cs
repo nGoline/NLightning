@@ -53,8 +53,8 @@ public interface IMessageFactory
                                                   CompactPubKey paymentBasepoint, CompactPubKey delayedPaymentBasepoint,
                                                   CompactPubKey htlcBasepoint, CompactPubKey firstPerCommitmentPoint,
                                                   ChannelFlags channelFlags,
-                                                  UpfrontShutdownScriptTlv? upfrontShutdownScriptTlv,
-                                                  ChannelTypeTlv? channelTypeTlv);
+                                                  ChannelTypeTlv channelTypeTlv,
+                                                  UpfrontShutdownScriptTlv? upfrontShutdownScriptTlv);
 
     OpenChannel2Message CreateOpenChannel2Message(ChannelId temporaryChannelId, uint fundingFeeRatePerKw,
                                                   uint commitmentFeeRatePerKw, ulong fundingSatoshis,
@@ -67,7 +67,7 @@ public interface IMessageFactory
                                                   byte[]? channelType = null, bool requireConfirmedInputs = false);
 
     AcceptChannel1Message CreateAcceptChannel1Message(LightningMoney channelReserveAmount,
-                                                      ChannelTypeTlv? channelTypeTlv,
+                                                      ChannelTypeTlv channelTypeTlv,
                                                       CompactPubKey delayedPaymentBasepoint,
                                                       CompactPubKey firstPerCommitmentPoint,
                                                       CompactPubKey fundingPubKey, CompactPubKey htlcBasepoint,

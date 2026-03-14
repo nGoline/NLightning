@@ -8,9 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq.Protected;
-using NLightning.Domain.Crypto.ValueObjects;
-using NLightning.Domain.Node.Models;
-using NLightning.Infrastructure.Persistence.Contexts;
 using NLightning.Tests.Utils;
 using ServiceStack;
 using ServiceStack.Text;
@@ -24,8 +21,9 @@ using Domain.Bitcoin.Transactions.Interfaces;
 using Domain.Channels.Factories;
 using Domain.Channels.Interfaces;
 using Domain.Crypto.Hashes;
-using Domain.Enums;
+using Domain.Crypto.ValueObjects;
 using Domain.Node.Interfaces;
+using Domain.Node.Models;
 using Domain.Node.Options;
 using Domain.Node.ValueObjects;
 using Domain.Protocol.Constants;
@@ -38,6 +36,7 @@ using Infrastructure.Bitcoin.Builders;
 using Infrastructure.Bitcoin.Options;
 using Infrastructure.Bitcoin.Signers;
 using Infrastructure.Persistence;
+using Infrastructure.Persistence.Contexts;
 using Infrastructure.Repositories;
 using Infrastructure.Serialization;
 using Mock;
@@ -145,10 +144,7 @@ public class AbcNetworkTests : IDisposable
                  {
                      options.Features = new FeatureOptions
                      {
-                         ChainHashes = [ChainConstants.Regtest],
-                         DataLossProtect = FeatureSupport.Optional,
-                         StaticRemoteKey = FeatureSupport.Optional,
-                         PaymentSecret = FeatureSupport.Optional
+                         ChainHashes = [ChainConstants.Regtest]
                      };
                      options.ListenAddresses = [$"{IPAddress.Loopback}:{_port}"];
                      options.BitcoinNetwork = BitcoinNetwork.Regtest;

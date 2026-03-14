@@ -52,10 +52,6 @@ public class ChannelFactory : IChannelFactory
         if (negotiatedFeatures.DualFund == FeatureSupport.Compulsory)
             throw new ChannelErrorException("We can only accept dual fund channels");
 
-        // Check if the channel type was negotiated and the channel type is present
-        if (message.ChannelTypeTlv is not null && negotiatedFeatures.ChannelType == FeatureSupport.Compulsory)
-            throw new ChannelErrorException("Channel type was negotiated but not provided");
-
         // Perform optional checks for the channel
         var ourChannelReserveAmount = GetOurChannelReserveFromFundingAmount(payload.FundingAmount);
         _channelOpenValidator.PerformOptionalChecks(
@@ -119,7 +115,7 @@ public class ChannelFactory : IChannelFactory
         var channelConfig = new ChannelConfig(payload.ChannelReserveAmount, payload.FeeRatePerKw,
                                               payload.HtlcMinimumAmount, _nodeOptions.DustLimitAmount,
                                               payload.MaxAcceptedHtlcs, payload.MaxHtlcValueInFlight, minimumDepth,
-                                              negotiatedFeatures.AnchorOutputs != FeatureSupport.No,
+                                              negotiatedFeatures.OptionAnchors != FeatureSupport.No,
                                               payload.DustLimitAmount, payload.ToSelfDelay, useScidAlias,
                                               localUpfrontShutdownScript, remoteUpfrontShutdownScript);
 
@@ -160,25 +156,31 @@ public class ChannelFactory : IChannelFactory
         if (request.FeeRatePerKw is not null && request.FeeRatePerKw > ChannelConstants.MaxFeePerKw)
             throw new ChannelErrorException($"Fee rate per kw is too large: {request.FeeRatePerKw}");
 
+        // Check if our fee is too big
+        if (request.FeeRatePerKw is not null && request.FeeRatePerKw < ChannelConstants.MinFeePerKw)
+            throw new ChannelErrorException($"Fee rate per kw is too small: {request.FeeRatePerKw}");
+
         // Check if the dust limit is greater than the channel reserve amount
         var channelReserveAmount = GetOurChannelReserveFromFundingAmount(request.FundingAmount);
         if (request.ChannelReserveAmount is not null && request.ChannelReserveAmount > channelReserveAmount)
             channelReserveAmount = request.ChannelReserveAmount;
 
+        var dustLimitAmount = ChannelConstants.MinDustLimitAmount;
         if (request.DustLimitAmount is not null)
         {
-            if (request.DustLimitAmount > channelReserveAmount)
-                throw new ChannelErrorException(
-                    $"Dust limit({request.DustLimitAmount}) is greater than channel reserve({channelReserveAmount})");
-
             // Check if dust_limit_satoshis is too small
             if (request.DustLimitAmount < ChannelConstants.MinDustLimitAmount)
                 throw new ChannelErrorException($"Dust limit amount is too small: {request.DustLimitAmount}");
+
+            dustLimitAmount = request.DustLimitAmount;
         }
 
+        if (dustLimitAmount > channelReserveAmount)
+            channelReserveAmount = dustLimitAmount;
+
         // Check if there are enough funds to pay for fees
-        var currentFeeRatePerKw = await _feeService.GetFeeRatePerKwAsync();
-        var expectedWeight = negotiatedFeatures.AnchorOutputs > FeatureSupport.No
+        var currentFeeRatePerKw = request.FeeRatePerKw ?? await _feeService.GetFeeRatePerKwAsync();
+        var expectedWeight = negotiatedFeatures.OptionAnchors > FeatureSupport.No
                                  ? TransactionConstants.InitialCommitmentTransactionWeightNoAnchor
                                  : TransactionConstants.InitialCommitmentTransactionWeightWithAnchor;
         var expectedFee = LightningMoney.Satoshis(expectedWeight * currentFeeRatePerKw.Satoshi / 1000);
@@ -188,7 +190,7 @@ public class ChannelFactory : IChannelFactory
         // Check if this is a large channel and if we support it
         if (request.FundingAmount >= ChannelConstants.LargeChannelAmount &&
             negotiatedFeatures.LargeChannels == FeatureSupport.No)
-            throw new ChannelErrorException("The peer don't support large channels");
+            throw new ChannelErrorException("The peer doesn't support large channels");
 
         // Check if we want zeroconf and if it's negotiated
         var minimumDepth = _nodeOptions.MinimumDepth;
@@ -237,10 +239,10 @@ public class ChannelFactory : IChannelFactory
         // Generate the channel configuration
         var channelConfig = new ChannelConfig(channelReserveAmount, request.FeeRatePerKw ?? currentFeeRatePerKw,
                                               request.HtlcMinimumAmount ?? _nodeOptions.HtlcMinimumAmount,
-                                              request.DustLimitAmount ?? _nodeOptions.DustLimitAmount,
+                                              dustLimitAmount,
                                               request.MaxAcceptedHtlcs ?? _nodeOptions.MaxAcceptedHtlcs,
                                               maxHtlcValueInFlight, minimumDepth,
-                                              negotiatedFeatures.AnchorOutputs != FeatureSupport.No,
+                                              negotiatedFeatures.OptionAnchors != FeatureSupport.No,
                                               LightningMoney.Zero, request.ToSelfDelay ?? _nodeOptions.ToSelfDelay,
                                               negotiatedFeatures.ScidAlias, localUpfrontShutdownScript);
 

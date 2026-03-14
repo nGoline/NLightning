@@ -10,6 +10,7 @@ using NLightning.Domain.Crypto.ValueObjects;
 using NLightning.Domain.Enums;
 using NLightning.Domain.Exceptions;
 using NLightning.Domain.Money;
+using NLightning.Domain.Node;
 using NLightning.Domain.Node.Options;
 using NLightning.Domain.Protocol.Interfaces;
 using NLightning.Domain.Protocol.Messages;
@@ -71,7 +72,8 @@ public class OpenChannel1MessageHandlerTests
                                     emptyPubKey, fundingAmount, emptyPubKey, emptyPubKey, htlcMinimumAmount,
                                     maxAcceptedHtlcs, maxHtlcAmountInFlight, emptyPubKey, LightningMoney.Zero,
                                     emptyPubKey, toSelfDelay);
-        _validMessage = new OpenChannel1Message(payload);
+        _validMessage =
+            new OpenChannel1Message(payload, new ChannelTypeTlv(FeatureSet.NewBasicChannelType().GetBytes()!));
 
         // Setup ChannelConfig
         var channelConfig = new ChannelConfig(channelReserveAmount, feeRateAmountPerKw, htlcMinimumAmount,
@@ -108,7 +110,8 @@ public class OpenChannel1MessageHandlerTests
                         new AcceptChannel1Payload(channelId, channelReserveAmount, emptyPubKey, dustLimitAmount,
                                                   emptyPubKey, emptyPubKey, emptyPubKey, htlcMinimumAmount,
                                                   maxAcceptedHtlcs, maxHtlcAmountInFlight, 3, emptyPubKey,
-                                                  emptyPubKey, toSelfDelay)));
+                                                  emptyPubKey, toSelfDelay),
+                        new ChannelTypeTlv(FeatureSet.NewBasicChannelType().GetBytes()!)));
     }
 
     [Fact]

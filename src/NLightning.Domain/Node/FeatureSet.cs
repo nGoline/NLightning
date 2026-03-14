@@ -21,8 +21,7 @@ public class FeatureSet
         { Feature.GossipQueriesEx, [Feature.GossipQueries] },
         { Feature.PaymentSecret, [Feature.VarOnionOptin] },
         { Feature.BasicMpp, [Feature.PaymentSecret] },
-        { Feature.OptionAnchorOutputs, [Feature.OptionStaticRemoteKey] },
-        { Feature.OptionAnchorsZeroFeeHtlcTx, [Feature.OptionStaticRemoteKey] },
+        { Feature.OptionAnchors, [Feature.OptionStaticRemoteKey] },
         { Feature.OptionRouteBlinding, [Feature.VarOnionOptin] },
         { Feature.OptionZeroconf, [Feature.OptionScidAlias] },
     };
@@ -38,8 +37,23 @@ public class FeatureSet
     public FeatureSet()
     {
         FeatureFlags = new BitArray(128);
+        // Always set the compulsory bit of option_data_loss_protect
+        SetFeature(Feature.OptionDataLossProtect, true);
         // Always set the compulsory bit of var_onion_optin
-        SetFeature(Feature.VarOnionOptin, false);
+        SetFeature(Feature.VarOnionOptin, true);
+        // Always set the compulsory bit of option_static_remote_key
+        SetFeature(Feature.OptionStaticRemoteKey, true);
+        // Always set the compulsory bit of payment_secret
+        SetFeature(Feature.PaymentSecret, true);
+        // Always set the compulsory bit for option_channel_type
+        SetFeature(Feature.OptionChannelType, true);
+    }
+
+    public static FeatureSet NewBasicChannelType()
+    {
+        // Initialize a new FeatureSet with only OptionStaticRemoteKey set as compulsory
+        var featureFlagsForChannelType = DeserializeFromBytes([0b0001_0000, 0b0000_0000]);
+        return featureFlagsForChannelType;
     }
 
     public event EventHandler? Changed;
@@ -164,13 +178,12 @@ public class FeatureSet
     }
 
     /// <summary>
-    /// Checks if the option_anchor_outputs or option_anchors_zero_fee_htlc_tx feature is set.
+    /// Checks if the option_anchors feature is set.
     /// </summary>
     /// <returns>true if one of the features is set, false otherwise.</returns>
     public bool IsOptionAnchorsSet()
     {
-        return IsFeatureSet(Feature.OptionAnchorOutputs, false) ||
-               IsFeatureSet(Feature.OptionAnchorsZeroFeeHtlcTx, false);
+        return IsFeatureSet(Feature.OptionAnchors, false) || IsFeatureSet(Feature.OptionAnchors, true);
     }
 
     /// <summary>
@@ -276,15 +289,24 @@ public class FeatureSet
     /// </remarks>
     public bool HasFeature(Feature feature) => IsFeatureSet(feature, false) || IsFeatureSet(feature, true);
 
-    public byte[]? GetBytes()
+    public byte[]? GetBytes(bool asGlobal = false)
     {
-        var lastIndexOfOne = GetLastIndexOfOne(FeatureFlags);
+        // Get the last valid bit
+        var lastIndexOfOne = GetLastIndexOfOne(FeatureFlags, asGlobal);
         if (lastIndexOfOne == -1)
             return null;
 
-        var bytes = new byte[lastIndexOfOne];
+        // Calculate total bytes needed
+        var totalBytes = (FeatureFlags.Length + 7) / 8;
+        var bytes = new byte[totalBytes];
+
+        // Copy bits as bytes
         FeatureFlags.CopyTo(bytes, 0);
-        return bytes;
+
+        // Calculate last valid byte
+        var lastValidByte = (lastIndexOfOne + 7) / 8;
+
+        return bytes[..lastValidByte];
     }
 
     /// <summary>
@@ -360,9 +382,11 @@ public class FeatureSet
     public override string ToString()
     {
         var sb = new StringBuilder();
-        for (var i = 0; i < FeatureFlags.Length; i++)
+        for (var i = 1; i < FeatureFlags.Length; i += 2)
         {
             if (IsFeatureSet(i))
+                sb.Append($"{(Feature)i}, ");
+            else if (IsFeatureSet(i - 1))
                 sb.Append($"{(Feature)i}, ");
         }
 
@@ -399,9 +423,10 @@ public class FeatureSet
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private static int GetLastIndexOfOne(BitArray bitArray)
+    private static int GetLastIndexOfOne(BitArray bitArray, bool asGlobal = false)
     {
-        for (var i = bitArray.Length - 1; i >= 0; i--)
+        var maxLength = asGlobal ? 13 : bitArray.Length;
+        for (var i = maxLength - 1; i >= 0; i--)
         {
             if (bitArray[i])
                 return i;

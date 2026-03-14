@@ -15,6 +15,7 @@ public class FeatureSetSerializerTests
     }
 
     #region Serialization
+
     [Theory]
     [InlineData(Feature.OptionZeroconf, false, 7)]
     [InlineData(Feature.OptionZeroconf, true, 7)]
@@ -24,13 +25,14 @@ public class FeatureSetSerializerTests
     [InlineData(Feature.OptionOnionMessages, true, 5)]
     [InlineData(Feature.OptionDualFund, false, 4)]
     [InlineData(Feature.OptionDualFund, true, 4)]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, false, 3)]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, true, 3)]
+    [InlineData(Feature.OptionAnchors, false, 3)]
+    [InlineData(Feature.OptionAnchors, true, 3)]
     [InlineData(Feature.OptionStaticRemoteKey, false, 2)]
     [InlineData(Feature.OptionStaticRemoteKey, true, 2)]
     [InlineData(Feature.GossipQueries, false, 1)]
     [InlineData(Feature.GossipQueries, true, 1)]
-    public async Task Given_Features_When_Serialize_Then_BytesAreTrimmed(Feature feature, bool isCompulsory, int expectedLength)
+    public async Task Given_Features_When_Serialize_Then_BytesAreTrimmed(
+        Feature feature, bool isCompulsory, int expectedLength)
     {
         // Arrange
         var features = new FeatureSet();
@@ -58,13 +60,14 @@ public class FeatureSetSerializerTests
     [InlineData(Feature.OptionOnionMessages, true, 5)]
     [InlineData(Feature.OptionDualFund, false, 4)]
     [InlineData(Feature.OptionDualFund, true, 4)]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, false, 3)]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, true, 3)]
+    [InlineData(Feature.OptionAnchors, false, 3)]
+    [InlineData(Feature.OptionAnchors, true, 3)]
     [InlineData(Feature.OptionStaticRemoteKey, false, 2)]
     [InlineData(Feature.OptionStaticRemoteKey, true, 2)]
     [InlineData(Feature.GossipQueries, false, 1)]
     [InlineData(Feature.GossipQueries, true, 1)]
-    public async Task Given_Features_When_SerializeWithoutLength_Then_LengthIsKnown(Feature feature, bool isCompulsory, int expectedLength)
+    public async Task Given_Features_When_SerializeWithoutLength_Then_LengthIsKnown(
+        Feature feature, bool isCompulsory, int expectedLength)
     {
         // Arrange
         var features = new FeatureSet();
@@ -91,13 +94,14 @@ public class FeatureSetSerializerTests
     [InlineData(Feature.OptionOnionMessages, true, new byte[] { 64, 0, 0, 0, 0 })]
     [InlineData(Feature.OptionDualFund, false, new byte[] { 32, 0, 0, 0 })]
     [InlineData(Feature.OptionDualFund, true, new byte[] { 16, 0, 0, 0 })]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, false, new byte[] { 128, 32, 0 })]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, true, new byte[] { 64, 16, 0 })]
+    [InlineData(Feature.OptionAnchors, false, new byte[] { 128, 32, 0 })]
+    [InlineData(Feature.OptionAnchors, true, new byte[] { 64, 16, 0 })]
     [InlineData(Feature.OptionStaticRemoteKey, false, new byte[] { 32, 0 })]
     [InlineData(Feature.OptionStaticRemoteKey, true, new byte[] { 16, 0 })]
     [InlineData(Feature.GossipQueries, false, new byte[] { 128 })]
     [InlineData(Feature.GossipQueries, true, new byte[] { 64 })]
-    public async Task Given_Features_When_Serialize_Then_BytesAreKnown(Feature feature, bool isCompulsory, byte[] expected)
+    public async Task Given_Features_When_Serialize_Then_BytesAreKnown(Feature feature, bool isCompulsory,
+                                                                       byte[] expected)
     {
         // Arrange
         var features = new FeatureSet();
@@ -154,9 +158,11 @@ public class FeatureSetSerializerTests
         // Assert
         Assert.Equal(2, bytes.Length);
     }
+
     #endregion
 
     #region Deserialization
+
     [Theory]
     [InlineData(new byte[] { 0, 7, 8, 128, 0, 0, 0, 0, 0 }, false, Feature.OptionZeroconf)]
     [InlineData(new byte[] { 0, 7, 4, 64, 0, 0, 0, 0, 0 }, true, Feature.OptionZeroconf)]
@@ -172,7 +178,8 @@ public class FeatureSetSerializerTests
     [InlineData(new byte[] { 0, 2, 16, 0 }, true, Feature.OptionStaticRemoteKey)]
     [InlineData(new byte[] { 0, 1, 128 }, false, Feature.GossipQueries)]
     [InlineData(new byte[] { 0, 1, 64 }, true, Feature.GossipQueries)]
-    public async Task Given_Buffer_When_Deserialize_Then_FeatureIsSet(byte[] buffer, bool isCompulsory, Feature expected)
+    public async Task Given_Buffer_When_Deserialize_Then_FeatureIsSet(byte[] buffer, bool isCompulsory,
+                                                                      Feature expected)
     {
         // Arrange
         using var stream = new MemoryStream(buffer);
@@ -212,5 +219,6 @@ public class FeatureSetSerializerTests
         Assert.False(features.IsFeatureSet(Feature.OptionZeroconf, false));
         Assert.False(features.IsFeatureSet(Feature.OptionZeroconf, true));
     }
+
     #endregion
 }

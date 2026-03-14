@@ -12,6 +12,7 @@ using Domain.Client.Requests;
 using Domain.Client.Responses;
 using Domain.Crypto.ValueObjects;
 using Domain.Enums;
+using Domain.Exceptions;
 using Domain.Node;
 using Domain.Node.Events;
 using Domain.Node.Interfaces;
@@ -63,8 +64,9 @@ public sealed class OpenChannelClientHandler
         var isPeerAddressInfo = request.NodeInfo.Contains('@') && request.NodeInfo.Contains(':');
         CompactPubKey peerId;
 
-        if (isPeerAddressInfo)
-            peerId = new PeerAddress(request.NodeInfo).PubKey;
+        peerId = isPeerAddressInfo
+                     ? new PeerAddress(request.NodeInfo).PubKey
+                     : new CompactPubKey(Convert.FromHexString(request.NodeInfo)); // Parse as a hex public key
 
         // Check if we're connected to the peer
         var peer = _peerManager.GetPeer(peerId)
@@ -84,53 +86,48 @@ public sealed class OpenChannelClientHandler
 
         try
         {
-            // TODO: Set the channel reserve as 1% of the channel or at least 354 sats
+            // Select UTXOs and mark them as toSpend for this channel
+            _ = _utxoMemoryRepository.LockUtxosToSpendOnChannel(request.FundingAmount, channel.ChannelId);
+
             // Add the channel to dictionaries
             _channelMemoryRepository.AddTemporaryChannel(peerId, channel);
 
-            // Select UTXOs and mark them as toSpend for this channel
-            var utxos = _utxoMemoryRepository.LockUtxosToSpendOnChannel(request.FundingAmount, channel.ChannelId);
+            // Create the channel type Tlv 
+            var channelTypeFeatureSet = FeatureSet.NewBasicChannelType();
+            if (peer.NegotiatedFeatures.OptionAnchors >= FeatureSupport.Optional)
+                channelTypeFeatureSet.SetFeature(Feature.OptionAnchors, true);
 
-            // Create a FeatureSet for the ChannelTypeTlv
-            var featureSet = new FeatureSet();
-            featureSet.SetFeature(Feature.VarOnionOptin, false, false);
+            if (channel.ChannelConfig.UseScidAlias >= FeatureSupport.Optional)
+                channelTypeFeatureSet.SetFeature(Feature.OptionScidAlias, true);
 
-            // Set StaticRemoteKey if needed
-            if (peer.NegotiatedFeatures.StaticRemoteKey == FeatureSupport.Compulsory)
-                featureSet.SetFeature(Feature.OptionStaticRemoteKey, true);
+            if (channel.ChannelConfig.MinimumDepth == 0)
+                channelTypeFeatureSet.SetFeature(Feature.OptionZeroconf, true);
 
-            // Set OptionAnchorOutputs if needed
-            if (peer.NegotiatedFeatures.AnchorOutputs == FeatureSupport.Compulsory)
-                featureSet.SetFeature(Feature.OptionAnchorOutputs, true);
+            var featureSetBytes = channelTypeFeatureSet.GetBytes() ?? throw new ClientException(ErrorCodes.InvalidOperation,
+                                          $"Error creating {nameof(ChannelTypeTlv)}. This should never happen.");
+            var channelTypeTlv = new ChannelTypeTlv(featureSetBytes);
 
             // Create UpfrontShutdownScriptTlv if needed
             UpfrontShutdownScriptTlv? upfrontShutdownScriptTlv = null;
             if (channel.LocalUpfrontShutdownScript is not null)
                 upfrontShutdownScriptTlv = new UpfrontShutdownScriptTlv(channel.LocalUpfrontShutdownScript.Value);
+            else
+                upfrontShutdownScriptTlv = new UpfrontShutdownScriptTlv(Array.Empty<byte>());
 
             // Create the ChannelFlags
             var channelFlags = new ChannelFlags(ChannelFlag.None);
-            if (peer.Features.IsFeatureSet(Feature.OptionScidAlias, true))
-            {
-                featureSet.SetFeature(Feature.OptionScidAlias, true);
+            if (peer.NegotiatedFeatures.ScidAlias == FeatureSupport.Compulsory)
                 channelFlags = new ChannelFlags(ChannelFlag.AnnounceChannel);
-            }
-
-            // Create the ChannelTypeTlv
-            ChannelTypeTlv? channelTypeTlv = null;
-            var featureSetBytes = featureSet.GetBytes();
-            if (featureSetBytes is not null)
-                channelTypeTlv = new ChannelTypeTlv(featureSetBytes);
 
             // Create the openChannel message
             var openChannel1Message = _messageFactory.CreateOpenChannel1Message(
                 channel.ChannelId, channel.LocalBalance, channel.LocalKeySet.FundingCompactPubKey,
-                channel.RemoteBalance, channel.ChannelConfig.ChannelReserveAmount!,
+                channel.RemoteBalance, channel.ChannelConfig.ChannelReserveAmount,
                 channel.ChannelConfig.FeeRateAmountPerKw,
                 channel.ChannelConfig.MaxAcceptedHtlcs, channel.LocalKeySet.RevocationCompactBasepoint,
                 channel.LocalKeySet.PaymentCompactBasepoint, channel.LocalKeySet.DelayedPaymentCompactBasepoint,
                 channel.LocalKeySet.HtlcCompactBasepoint, channel.LocalKeySet.CurrentPerCommitmentCompactPoint,
-                channelFlags, upfrontShutdownScriptTlv, channelTypeTlv);
+                channelFlags, channelTypeTlv, upfrontShutdownScriptTlv);
 
             if (!peer.TryGetPeerService(out var peerService))
                 throw new ClientException(ErrorCodes.InvalidOperation, "Error getting peerService from peer");
@@ -138,6 +135,9 @@ public sealed class OpenChannelClientHandler
             var tsc = new TaskCompletionSource<OpenChannelClientResponse>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
             peerService.OnChannelMessageReceived += ChannelMessageHandlerEnvelope;
+            peerService.OnAttentionMessageReceived += AttentionMessageHandlerEnvelope;
+            peerService.OnDisconnect += PeerDisconnectionEnvelope;
+            peerService.OnExceptionRaised += ExceptionRaisedEnvelope;
 
             try
             {
@@ -147,27 +147,42 @@ public sealed class OpenChannelClientHandler
             {
                 //Unsubscribe from the event so we don't have dangling memory
                 peerService.OnChannelMessageReceived -= ChannelMessageHandlerEnvelope;
+                peerService.OnAttentionMessageReceived -= AttentionMessageHandlerEnvelope;
+                peerService.OnDisconnect -= PeerDisconnectionEnvelope;
+                peerService.OnExceptionRaised -= ExceptionRaisedEnvelope;
 
                 throw;
             }
-
-            // Since everything went ok so far, let's update the locked utxos on the database
-            foreach (var utxo in utxos)
-                _unitOfWork.UtxoDbRepository.Update(utxo);
-
-            await _unitOfWork.SaveChangesAsync();
 
             var response = await tsc.Task;
 
             // Unsubscribe from the event
             peerService.OnChannelMessageReceived -= ChannelMessageHandlerEnvelope;
+            peerService.OnAttentionMessageReceived -= AttentionMessageHandlerEnvelope;
+            peerService.OnDisconnect -= PeerDisconnectionEnvelope;
+            peerService.OnExceptionRaised -= ExceptionRaisedEnvelope;
 
             return response;
 
-            // 
+            // Envelopes for the events
             void ChannelMessageHandlerEnvelope(object? _, ChannelMessageEventArgs args)
             {
                 HandleChannelMessage(args, channel.ChannelId, tsc);
+            }
+
+            void AttentionMessageHandlerEnvelope(object? _, AttentionMessageEventArgs args)
+            {
+                HandleAttentionMessage(args, channel.ChannelId, tsc);
+            }
+
+            void PeerDisconnectionEnvelope(object? _, PeerDisconnectedEventArgs args)
+            {
+                HandlePeerDisconnection(args, channel.ChannelId, tsc);
+            }
+
+            void ExceptionRaisedEnvelope(object? _, Exception e)
+            {
+                HandleExceptionRaised(e, channel.ChannelId, tsc);
             }
         }
         catch
@@ -184,8 +199,8 @@ public sealed class OpenChannelClientHandler
         }
     }
 
-    private void HandleChannelMessage(ChannelMessageEventArgs args, ChannelId _,
-                                      TaskCompletionSource<OpenChannelClientResponse> __)
+    private static void HandleChannelMessage(ChannelMessageEventArgs args, ChannelId _,
+                                             TaskCompletionSource<OpenChannelClientResponse> __)
     {
         if (args.Message.Type == MessageTypes.AcceptChannel)
         {
@@ -199,5 +214,26 @@ public sealed class OpenChannelClientHandler
         {
             Console.WriteLine("Unknown message type: {0}", Enum.GetName(args.Message.Type));
         }
+    }
+
+    private static void HandleAttentionMessage(AttentionMessageEventArgs args, ChannelId _,
+                                               TaskCompletionSource<OpenChannelClientResponse> tsc)
+    {
+        Console.Error.WriteLine($"Error opening channel: {args.Message}");
+        tsc.TrySetException(new ChannelErrorException($"Error opening channel: {args.Message}"));
+    }
+
+    private static void HandlePeerDisconnection(PeerDisconnectedEventArgs args, ChannelId _,
+                                                TaskCompletionSource<OpenChannelClientResponse> tsc)
+    {
+        Console.Error.WriteLine("Peer disconnected");
+        tsc.TrySetException(new ChannelErrorException("Error opening channel: Peer disconnected"));
+    }
+
+    private static void HandleExceptionRaised(Exception e, ChannelId _,
+                                              TaskCompletionSource<OpenChannelClientResponse> tsc)
+    {
+        Console.Error.WriteLine(e.ToString());
+        tsc.TrySetException(e);
     }
 }

@@ -442,8 +442,8 @@ public class MessageFactory : IMessageFactory
                                                          CompactPubKey htlcBasepoint,
                                                          CompactPubKey firstPerCommitmentPoint,
                                                          ChannelFlags channelFlags,
-                                                         UpfrontShutdownScriptTlv? upfrontShutdownScriptTlv,
-                                                         ChannelTypeTlv? channelTypeTlv)
+                                                         ChannelTypeTlv channelTypeTlv,
+                                                         UpfrontShutdownScriptTlv? upfrontShutdownScriptTlv)
     {
         var maxHtlcValueInFlight =
             LightningMoney.Satoshis(_nodeOptions.AllowUpToPercentageOfChannelFundsInFlight * fundingAmount.Satoshi /
@@ -456,7 +456,7 @@ public class MessageFactory : IMessageFactory
                                               paymentBasepoint, pushAmount, revocationBasepoint,
                                               _nodeOptions.ToSelfDelay);
 
-        return new OpenChannel1Message(payload, upfrontShutdownScriptTlv, channelTypeTlv);
+        return new OpenChannel1Message(payload, channelTypeTlv, upfrontShutdownScriptTlv);
     }
 
     /// <summary>
@@ -545,7 +545,7 @@ public class MessageFactory : IMessageFactory
     /// <seealso cref="UpfrontShutdownScriptTlv"/>
     /// <seealso cref="ChannelTypeTlv"/>
     public AcceptChannel1Message CreateAcceptChannel1Message(LightningMoney channelReserveAmount,
-                                                             ChannelTypeTlv? channelTypeTlv,
+                                                             ChannelTypeTlv channelTypeTlv,
                                                              CompactPubKey delayedPaymentBasepoint,
                                                              CompactPubKey firstPerCommitmentPoint,
                                                              CompactPubKey fundingPubKey, CompactPubKey htlcBasepoint,
@@ -562,7 +562,7 @@ public class MessageFactory : IMessageFactory
                                                 maxHtlcValueInFlight, minimumDepth, paymentBasepoint,
                                                 revocationBasepoint, toSelfDelay);
 
-        return new AcceptChannel1Message(payload, upfrontShutdownScriptTlv, channelTypeTlv);
+        return new AcceptChannel1Message(payload, channelTypeTlv, upfrontShutdownScriptTlv);
     }
 
     /// <summary>

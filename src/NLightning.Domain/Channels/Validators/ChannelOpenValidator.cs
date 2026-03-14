@@ -41,8 +41,13 @@ public class ChannelOpenValidator : IChannelOpenValidator
                     $"Max htlc value in flight is too small: {parameters.MaxHtlcValueInFlight}");
         }
 
+        // If the channel amount is too small, we can have the channelReserve smaller than our dust
+        var ourChannelReserveAmount = parameters.OurChannelReserveAmount;
+        if (ourChannelReserveAmount < parameters.DustLimitAmount)
+            ourChannelReserveAmount = parameters.DustLimitAmount;
+
         // Check if we consider channel_reserve_satoshis too large. IE. 20% bigger than our 1% channel reserve
-        if (parameters.ChannelReserveAmount > parameters.OurChannelReserveAmount * 1.2M)
+        if (parameters.ChannelReserveAmount > ourChannelReserveAmount * 1.2M)
             throw new ChannelErrorException($"Channel reserve amount is too large: {parameters.ChannelReserveAmount}");
 
         // Check if we consider max_accepted_htlcs too small. IE. 20% smaller than our max-accepted htlcs
@@ -83,7 +88,7 @@ public class ChannelOpenValidator : IChannelOpenValidator
                     $"Fee rate per kw is too small: {parameters.FeeRatePerKw}, currentFee{parameters.CurrentFeeRatePerKw}");
         }
 
-        // Check if the dust limit is greater than the channel reserve amount 
+        // Check if the dust limit is greater than the channel reserve amount
         if (parameters.DustLimitAmount > parameters.ChannelReserveAmount)
             throw new ChannelErrorException(
                 $"Dust limit({parameters.DustLimitAmount}) is greater than channel reserve({parameters.ChannelReserveAmount})");
@@ -100,7 +105,7 @@ public class ChannelOpenValidator : IChannelOpenValidator
                 throw new ChannelErrorException($"Push amount is too large: {parameters.PushAmount}");
 
             // Check if there are enough funds to pay for fees
-            var expectedWeight = parameters.NegotiatedFeatures.AnchorOutputs > FeatureSupport.No
+            var expectedWeight = parameters.NegotiatedFeatures.OptionAnchors > FeatureSupport.No
                                      ? TransactionConstants.InitialCommitmentTransactionWeightNoAnchor
                                      : TransactionConstants.InitialCommitmentTransactionWeightWithAnchor;
             var expectedFee = LightningMoney.Satoshis(expectedWeight * parameters.CurrentFeeRatePerKw.Satoshi / 1000);
@@ -114,35 +119,36 @@ public class ChannelOpenValidator : IChannelOpenValidator
                 throw new ChannelErrorException("We don't support large channels");
         }
 
-        // Check ChannelType against negotiated options
+        // Check if ChannelType exists
         minimumDepth = _nodeOptions.MinimumDepth;
-        if (parameters.ChannelTypeTlv is not null)
+        if (parameters.ChannelTypeTlv is null)
+            throw new ChannelErrorException("ChannelTypeTlv is not present");
+
+        // Check if OptionStaticRemoteKey is Compulsory
+        if (!parameters.ChannelTypeTlv.Features.IsFeatureSet(Feature.OptionStaticRemoteKey, true))
+            throw new ChannelErrorException("Static remote key feature is compulsory but not set by peer",
+                                            "ChannelTypeTlv: Static remote key is compulsory");
+
+        if (parameters.ChannelTypeTlv.Features.IsFeatureSet(Feature.OptionAnchors, true)
+         && parameters.NegotiatedFeatures.OptionAnchors == FeatureSupport.No)
+            throw new ChannelErrorException("Anchor outputs feature is not supported but requested by peer",
+                                            "ChannelTypeTlv: We don't support anchor outputs");
+
+        if (parameters.ChannelTypeTlv.Features.IsFeatureSet(Feature.OptionScidAlias, true))
         {
-            // Check if it set any non-negotiated features
-            if (parameters.ChannelTypeTlv.Features.IsFeatureSet(Feature.OptionStaticRemoteKey, true))
-            {
-                if (parameters.NegotiatedFeatures.StaticRemoteKey == FeatureSupport.No)
-                    throw new ChannelErrorException("Static remote key feature is not supported but requested by peer");
+            if (parameters.ChannelFlags is not null && parameters.ChannelFlags.Value.AnnounceChannel)
+                throw new ChannelErrorException("Invalid channel flags for OPTION_SCID_ALIAS",
+                                                "ChannelTypeTlv: We want to announce this channel");
+        }
 
-                if (parameters.ChannelTypeTlv.Features.IsFeatureSet(Feature.OptionAnchorOutputs, true)
-                 && parameters.NegotiatedFeatures.AnchorOutputs == FeatureSupport.No)
-                    throw new ChannelErrorException("Anchor outputs feature is not supported but requested by peer");
+        // Check for ZeroConf feature
+        if (parameters.ChannelTypeTlv.Features.IsFeatureSet(Feature.OptionZeroconf, true))
+        {
+            if (_nodeOptions.Features.ZeroConf == FeatureSupport.No)
+                throw new ChannelErrorException("ZeroConf feature not supported but requested by peer",
+                                                "ChannelTypeTlv: We don't support ZeroConf with you");
 
-                if (parameters.ChannelTypeTlv.Features.IsFeatureSet(Feature.OptionScidAlias, true))
-                {
-                    if (parameters.ChannelFlags is not null && parameters.ChannelFlags.Value.AnnounceChannel)
-                        throw new ChannelErrorException("Invalid channel flags for OPTION_SCID_ALIAS");
-                }
-
-                // Check for ZeroConf feature
-                if (parameters.ChannelTypeTlv.Features.IsFeatureSet(Feature.OptionZeroconf, true))
-                {
-                    if (_nodeOptions.Features.ZeroConf == FeatureSupport.No)
-                        throw new ChannelErrorException("ZeroConf feature not supported but requested by peer");
-
-                    minimumDepth = 0U;
-                }
-            }
+            minimumDepth = 0U;
         }
     }
 }
