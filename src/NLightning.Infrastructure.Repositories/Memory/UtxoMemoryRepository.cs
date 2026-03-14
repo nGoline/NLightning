@@ -85,12 +85,12 @@ public class UtxoMemoryRepository : IUtxoMemoryRepository
 
     public List<UtxoModel> GetLockedUtxosForChannel(ChannelId channelId)
     {
-        return _utxoSet.Values.Where(x => x.LockedToChannelId.Equals(channelId)).ToList();
+        return _utxoSet.Values.Where(x => x.LockedToChannelId.HasValue && x.LockedToChannelId.Value.Equals(channelId)).ToList();
     }
 
     public List<UtxoModel> ReturnUtxosNotSpentOnChannel(ChannelId channelId)
     {
-        var utxos = _utxoSet.Values.Where(x => x.LockedToChannelId.Equals(channelId)).ToList();
+        var utxos = _utxoSet.Values.Where(x => x.LockedToChannelId.HasValue && x.LockedToChannelId.Value.Equals(channelId)).ToList();
         foreach (var utxo in utxos)
         {
             utxo.LockedToChannelId = null;
@@ -102,7 +102,7 @@ public class UtxoMemoryRepository : IUtxoMemoryRepository
 
     public void ConfirmSpendOnChannel(ChannelId channelId)
     {
-        var utxos = _utxoSet.Values.Where(x => x.LockedToChannelId.Equals(channelId));
+        var utxos = _utxoSet.Values.Where(x => x.LockedToChannelId.HasValue && x.LockedToChannelId.Value.Equals(channelId));
         foreach (var utxo in utxos)
             _utxoSet.TryRemove((utxo.TxId, utxo.Index), out _);
     }

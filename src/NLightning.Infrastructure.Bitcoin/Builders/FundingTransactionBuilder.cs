@@ -57,8 +57,8 @@ public class FundingTransactionBuilder : IFundingTransactionBuilder
         if (transaction.ChangeAddress is not null)
         {
             var changeAmount = totalInputAmount - transaction.Fee - fundingOutput.Amount;
-            tx.Outputs.Add(new TxOut(new Money(changeAmount.Satoshi),
-                                     _network.CreateBitcoinAddress(transaction.ChangeAddress.Address)));
+            var bitcoinAddress = BitcoinAddress.Create(transaction.ChangeAddress.Address, _network);
+            tx.Outputs.Add(new TxOut(new Money(changeAmount.Satoshi), bitcoinAddress));
         }
 
         // Update the funding output info with transaction details

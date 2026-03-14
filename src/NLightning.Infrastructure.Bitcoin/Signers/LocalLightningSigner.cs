@@ -133,7 +133,7 @@ public class LocalLightningSigner : ILightningSigner
         // Derive the per-commitment seed from the channel key
         var channelExtKey = _secureKeyManager.GetChannelKeyAtIndex(channelKeyIndex);
         var channelKey = ExtKey.CreateFromBytes(channelExtKey);
-        using var perCommitmentSeed = channelKey.Derive(5).PrivateKey;
+        using var perCommitmentSeed = channelKey.Derive(PerCommitmentSeedDerivationIndex, true).PrivateKey;
 
         var perCommitmentSecret =
             _keyDerivationService.GeneratePerCommitmentSecret(perCommitmentSeed.ToBytes(), commitmentNumber);
@@ -169,7 +169,7 @@ public class LocalLightningSigner : ILightningSigner
         // Derive the per-commitment seed from the channel key
         var channelExtKey = _secureKeyManager.GetChannelKeyAtIndex(channelKeyIndex);
         var channelKey = ExtKey.CreateFromBytes(channelExtKey);
-        using var perCommitmentSeed = channelKey.Derive(5).PrivateKey;
+        using var perCommitmentSeed = channelKey.Derive(PerCommitmentSeedDerivationIndex, true).PrivateKey;
 
         return _keyDerivationService.GeneratePerCommitmentSecret(
             perCommitmentSeed.ToBytes(), commitmentNumber);

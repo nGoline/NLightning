@@ -43,6 +43,7 @@ public class BlockchainMonitorService : IBlockchainMonitor
 
     public event EventHandler<NewBlockEventArgs>? OnNewBlockDetected;
     public event EventHandler<TransactionConfirmedEventArgs>? OnTransactionConfirmed;
+    public event EventHandler<WalletMovementEventArgs>? OnWalletMovementDetected;
 
     public uint LastProcessedBlockHeight => _lastProcessedBlockHeight;
 
@@ -522,6 +523,12 @@ public class BlockchainMonitorService : IBlockchainMonitor
                 if (!_watchedAddresses.TryRemove(destinationAddress.ToString(), out _))
                     _logger.LogError("Unable to remove watched address {DestinationAddress} from the list",
                                      destinationAddress);
+
+                OnWalletMovementDetected
+                  ?.Invoke(this, new WalletMovementEventArgs(destinationAddress.ToString(),
+                                                             LightningMoney.Satoshis(output.Value.Satoshi),
+                                                             txId.ToBytes(),
+                                                             blockHeight));
             }
 
             // Check each input for spent utxos

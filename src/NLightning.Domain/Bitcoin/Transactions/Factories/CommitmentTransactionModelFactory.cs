@@ -27,6 +27,21 @@ public class CommitmentTransactionModelFactory : ICommitmentTransactionModelFact
 
     public CommitmentTransactionModel CreateCommitmentTransactionModel(ChannelModel channel, CommitmentSide side)
     {
+        // Guarantee we have a RemoteKeySet
+        if (channel.RemoteKeySet is null)
+            throw new InvalidOperationException(
+                "Channel must have a RemoteKeySet to create a commitment transaction model");
+
+        // Guarantee we have a CommitmentNumber
+        if (channel.CommitmentNumber is null)
+            throw new InvalidOperationException(
+                "Channel must have a CommitmentNumber to create a commitment transaction model");
+
+        // Guarantee we have a FundingOutput
+        if (channel.FundingOutput is null)
+            throw new InvalidOperationException(
+                "Channel must have a FundingOutput to create a commitment transaction model");
+
         // Create base output information
         ToLocalOutputInfo? toLocalOutput = null;
         ToRemoteOutputInfo? toRemoteOutput = null;
@@ -56,8 +71,7 @@ public class CommitmentTransactionModelFactory : ICommitmentTransactionModelFact
                 channel.LocalKeySet.CurrentPerCommitmentIndex),
 
             CommitmentSide.Remote => _commitmentKeyDerivationService.DeriveRemoteCommitmentKeys(
-                channel.LocalKeySet.KeyIndex, localBasepoints, remoteBasepoints,
-                channel.RemoteKeySet.CurrentPerCommitmentCompactPoint, channel.RemoteKeySet.CurrentPerCommitmentIndex),
+                localBasepoints, remoteBasepoints, channel.RemoteKeySet.CurrentPerCommitmentCompactPoint),
 
             _ => throw new ArgumentOutOfRangeException(nameof(side), side,
                                                        "You should use either Local or Remote commitment side.")

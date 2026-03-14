@@ -66,7 +66,7 @@ public class FundingTransactionModelFactory : IFundingTransactionModelFactory
         weight += WeightConstants.P2WpkhOutputWeight;
         fee = LightningMoney.MilliSatoshis(weight * channel.ChannelConfig.FeeRateAmountPerKw.Satoshi);
 
-        // Recalculate remaining amount with updated fee
+        // Recalculate the remaining amount with updated fee
         fundingTransactionModel.ChangeAmount = totalInputAmount - fundingAmount - fee;
         fundingTransactionModel.ChangeAddress = changeAddress ??
                                                 throw new ArgumentNullException(
