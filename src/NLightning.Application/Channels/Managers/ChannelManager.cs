@@ -120,6 +120,16 @@ public class ChannelManager : IChannelManager
                                                                           "Sorry, we had an internal error");
                 return await GetChannelMessageHandler<ChannelReadyMessage>(scope)
                           .HandleAsync(channelReadyMessage, currentState, negotiatedFeatures, peerPubKey);
+
+            case MessageTypes.FundingSigned:
+                // Handle funding signed message
+                var fundingSignedMessage = message as FundingSignedMessage
+                                        ?? throw new ChannelErrorException(
+                                               "Error boxing message to FundingSignedMessage",
+                                               "Sorry, we had an internal error");
+                return await GetChannelMessageHandler<FundingSignedMessage>(scope)
+                          .HandleAsync(fundingSignedMessage, currentState, negotiatedFeatures, peerPubKey);
+
             default:
                 throw new ChannelErrorException("Unknown message type", "Sorry, we had an internal error");
         }

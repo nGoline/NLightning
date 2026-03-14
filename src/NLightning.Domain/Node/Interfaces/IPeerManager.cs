@@ -33,7 +33,8 @@ public interface IPeerManager
     /// Disconnects a peer.
     /// </summary>
     /// <param name="compactPubKey" cref="CompactPubKey">CompactPubKey of the peer</param>
-    void DisconnectPeer(CompactPubKey compactPubKey);
+    /// <param name="exception">Optional exception that caused the disconnection</param>
+    void DisconnectPeer(CompactPubKey compactPubKey, Exception? exception = null);
 
     List<PeerModel> ListPeers();
     PeerModel? GetPeer(CompactPubKey peerId);

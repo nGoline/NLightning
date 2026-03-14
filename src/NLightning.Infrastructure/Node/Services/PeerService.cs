@@ -1,8 +1,10 @@
 using System.Net;
+using System.Text.Unicode;
 using Microsoft.Extensions.Logging;
 
 namespace NLightning.Infrastructure.Node.Services;
 
+using Domain.Channels.ValueObjects;
 using Domain.Crypto.ValueObjects;
 using Domain.Exceptions;
 using Domain.Node.Events;
@@ -28,6 +30,12 @@ public sealed class PeerService : IPeerService
 
     /// <inheritdoc/>
     public event EventHandler<ChannelMessageEventArgs>? OnChannelMessageReceived;
+
+    /// <inheritdoc/>
+    public event EventHandler<AttentionMessageEventArgs>? OnAttentionMessageReceived;
+
+    /// <inheritdoc/>
+    public event EventHandler<Exception>? OnExceptionRaised;
 
     /// <inheritdoc/>
     public CompactPubKey PeerPubKey => _peerCommunicationService.PeerCompactPubKey;
@@ -63,10 +71,6 @@ public sealed class PeerService : IPeerService
         }
         catch (Exception e)
         {
-            _peerCommunicationService.MessageReceived -= HandleMessage;
-            _peerCommunicationService.ExceptionRaised -= HandleException;
-            _peerCommunicationService.DisconnectEvent -= HandleDisconnection;
-
             throw new ErrorException("Error initializing peer communication", e);
         }
     }
@@ -74,15 +78,20 @@ public sealed class PeerService : IPeerService
     /// <summary>
     /// Disconnects from the peer.
     /// </summary>
-    public void Disconnect()
+    public void Disconnect(Exception? exception = null)
     {
         _logger.LogInformation("Disconnecting peer {peer}", PeerPubKey);
-        _peerCommunicationService.Disconnect();
+        _peerCommunicationService.Disconnect(exception);
     }
 
     public Task SendMessageAsync(IChannelMessage replyMessage)
     {
         return _peerCommunicationService.SendMessageAsync(replyMessage);
+    }
+
+    public Task SendWarningAsync(WarningException we)
+    {
+        return _peerCommunicationService.SendWarningAsync(we);
     }
 
     /// <summary>
@@ -99,8 +108,54 @@ public sealed class PeerService : IPeerService
         }
         else if (message is IChannelMessage channelMessage)
         {
-            // Handle channel-related messages
-            HandleChannelMessage(channelMessage);
+            _logger.LogTrace("Received channel message ({messageType}) from peer {peer}",
+                             Enum.GetName(message.Type), PeerPubKey);
+
+            OnChannelMessageReceived?.Invoke(this, new ChannelMessageEventArgs(channelMessage, PeerPubKey));
+        }
+        else if (message is ErrorMessage errorMessage)
+        {
+            var errorMessageString = string.Empty;
+            ChannelId? channelId = null;
+            if (errorMessage.Payload.ChannelId != ChannelId.Zero)
+                channelId = errorMessage.Payload.ChannelId;
+
+            if (errorMessage.Payload.Data is not null)
+            {
+                // Try to get utf8 string from error data
+                errorMessageString = Utf8.IsValid(errorMessage.Payload.Data)
+                                         ? System.Text.Encoding.UTF8.GetString(errorMessage.Payload.Data)
+                                         : Convert.ToHexStringLower(errorMessage.Payload.Data);
+
+                _logger.LogError(
+                    "Received error message from peer {peer} for channel {channelId}: {errorMessage}",
+                    PeerPubKey, channelId is null ? "" : channelId.ToString(), errorMessageString);
+            }
+
+            OnAttentionMessageReceived?.Invoke(
+                this, new AttentionMessageEventArgs(errorMessageString, PeerPubKey, channelId));
+        }
+        else if (message is WarningMessage warningMessage)
+        {
+            var warningMessageString = string.Empty;
+            ChannelId? channelId = null;
+            if (warningMessage.Payload.ChannelId != ChannelId.Zero)
+                channelId = warningMessage.Payload.ChannelId;
+
+            if (warningMessage.Payload.Data is not null)
+            {
+                // Try to get utf8 string from error data
+                warningMessageString = Utf8.IsValid(warningMessage.Payload.Data)
+                                           ? System.Text.Encoding.UTF8.GetString(warningMessage.Payload.Data)
+                                           : Convert.ToHexStringLower(warningMessage.Payload.Data);
+
+                _logger.LogError(
+                    "Received error message from peer {peer} for channel {channelId}: {errorMessage}",
+                    PeerPubKey, channelId is null ? "" : channelId.ToString(), warningMessageString);
+            }
+
+            OnAttentionMessageReceived?.Invoke(
+                this, new AttentionMessageEventArgs(warningMessageString, PeerPubKey, channelId));
         }
     }
 
@@ -110,6 +165,7 @@ public sealed class PeerService : IPeerService
     private void HandleException(object? sender, Exception e)
     {
         _logger.LogError(e, "Exception occurred with peer {peer}", PeerPubKey);
+        OnExceptionRaised?.Invoke(this, e);
     }
 
     private void HandleDisconnection(object? sender, EventArgs e)
@@ -185,14 +241,11 @@ public sealed class PeerService : IPeerService
         _isInitialized = true;
     }
 
-    /// <summary>
-    /// Handles channel messages.
-    /// </summary>
-    private void HandleChannelMessage(IChannelMessage message)
+    public void Dispose()
     {
-        _logger.LogTrace("Received channel message ({messageType}) from peer {peer}",
-                         Enum.GetName(message.Type), PeerPubKey);
-
-        OnChannelMessageReceived?.Invoke(this, new ChannelMessageEventArgs(message, PeerPubKey));
+        _peerCommunicationService.MessageReceived -= HandleMessage;
+        _peerCommunicationService.ExceptionRaised -= HandleException;
+        _peerCommunicationService.DisconnectEvent -= HandleDisconnection;
+        _peerCommunicationService.Dispose();
     }
 }

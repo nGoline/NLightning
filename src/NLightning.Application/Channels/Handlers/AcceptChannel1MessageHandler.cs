@@ -96,8 +96,8 @@ public class AcceptChannel1MessageHandler : IChannelMessageHandler<AcceptChannel
             throw new ChannelErrorException("Temporary channel not found", payload.ChannelId);
 
         // Check if the channel type was negotiated and the channel type is present
-        if (message.ChannelTypeTlv is not null && negotiatedFeatures.ChannelType == FeatureSupport.Compulsory)
-            throw new ChannelErrorException("Channel type was negotiated but not provided");
+        if (message.ChannelTypeTlv is null)
+            throw new ChannelErrorException("Channel type was not provided");
 
         // Perform optional checks for the channel
         _channelOpenValidator.PerformOptionalChecks(

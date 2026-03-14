@@ -226,7 +226,7 @@ public class PeerManagerTests
         peerManager.DisconnectPeer(_compactPubKey);
 
         // Then
-        _mockPeerService.Verify(p => p.Disconnect(), Times.Once);
+        _mockPeerService.Verify(p => p.Disconnect(null), Times.Once);
     }
 
     [Fact]
@@ -342,7 +342,7 @@ public class PeerManagerTests
         await Task.Delay(100, TestContext.Current.CancellationToken);
 
         // Then
-        _mockPeerService.Verify(p => p.Disconnect(), Times.Once);
+        _mockPeerService.Verify(p => p.Disconnect(null), Times.Once);
         _mockLogger.Verify(
             l => l.Log(
                 LogLevel.Error,
@@ -383,7 +383,7 @@ public class PeerManagerTests
         await Task.Delay(100, TestContext.Current.CancellationToken);
 
         // Then
-        _mockPeerService.Verify(p => p.Disconnect(), Times.Never);
+        _mockPeerService.Verify(p => p.Disconnect(null), Times.Never);
         _mockLogger.Verify(
             l => l.Log(
                 LogLevel.Warning,
@@ -436,14 +436,14 @@ public class PeerManagerTests
         var peers = GetPeersFromManager(peerManager);
         peers.Add(_compactPubKey, _mockPeerModel);
         var taskCompletionSource = new TaskCompletionSource();
-        _mockPeerService.Setup(x => x.Disconnect()).Callback(taskCompletionSource.SetResult);
+        _mockPeerService.Setup(x => x.Disconnect(null)).Callback(taskCompletionSource.SetResult);
 
         // When
         _ = peerManager.StopAsync();
         await taskCompletionSource.Task;
 
         // Then
-        _mockPeerService.Verify(p => p.Disconnect(), Times.Once);
+        _mockPeerService.Verify(p => p.Disconnect(null), Times.Once);
     }
 
     [Fact]

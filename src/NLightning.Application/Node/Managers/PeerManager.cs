@@ -143,18 +143,17 @@ public sealed class PeerManager : IPeerManager
     }
 
     /// <inheritdoc />
-    public void DisconnectPeer(CompactPubKey pubKey)
+    public void DisconnectPeer(CompactPubKey pubKey, Exception? exception = null)
     {
         if (_peers.TryGetValue(pubKey, out var peer))
         {
-            if (peer.TryGetPeerService(out var peerService))
-            {
-                peerService.Disconnect();
-            }
-            else
+            if (!peer.TryGetPeerService(out var peerService))
             {
                 _logger.LogWarning("PeerService not found for {Peer}", pubKey);
+                return;
             }
+
+            DisconnectPeer(peerService, exception);
         }
         else
         {
@@ -170,6 +169,11 @@ public sealed class PeerManager : IPeerManager
     public PeerModel? GetPeer(CompactPubKey peerId)
     {
         return _peers.GetValueOrDefault(peerId);
+    }
+
+    private static void DisconnectPeer(IPeerService peerService, Exception? exception = null)
+    {
+        peerService.Disconnect(exception);
     }
 
     private async Task<PeerModel> ConnectToPeerAsync(PeerAddressInfo peerAddressInfo, IUnitOfWork uow)
@@ -272,6 +276,7 @@ public sealed class PeerManager : IPeerManager
         {
             peerService.OnDisconnect -= HandlePeerDisconnection;
             peerService.OnChannelMessageReceived -= HandlePeerChannelMessage;
+            peerService.Dispose();
         }
         else
         {
@@ -317,7 +322,7 @@ public sealed class PeerManager : IPeerManager
                         ? cee.PeerMessage
                         : cee.Message);
 
-                DisconnectPeer(peerService.PeerPubKey);
+                DisconnectPeer(peerService, cee);
                 return;
             }
 
@@ -330,6 +335,17 @@ public sealed class PeerManager : IPeerManager
                         ? cwe.PeerMessage
                         : cwe.Message);
 
+                _ = peerService.SendWarningAsync(cwe)
+                               .ContinueWith(warningTask =>
+                                {
+                                    if (warningTask.IsFaulted)
+                                    {
+                                        _logger.LogError(warningTask.Exception,
+                                                         "Failed to send warning message to peer {Peer}",
+                                                         peerService.PeerPubKey);
+                                    }
+                                }, TaskContinuationOptions.OnlyOnFaulted);
+
                 return;
             }
 
@@ -337,7 +353,7 @@ public sealed class PeerManager : IPeerManager
                 task.Exception, "Error handling channel message ({messageType}) from peer {peer}",
                 Enum.GetName(messageType), peerService.PeerPubKey);
 
-            DisconnectPeer(peerService.PeerPubKey);
+            DisconnectPeer(peerService);
             return;
         }
 
