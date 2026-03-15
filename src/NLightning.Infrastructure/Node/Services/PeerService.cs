@@ -125,7 +125,11 @@ public sealed class PeerService : IPeerService
                 // Try to get utf8 string from error data
                 errorMessageString = Utf8.IsValid(errorMessage.Payload.Data)
                                          ? System.Text.Encoding.UTF8.GetString(errorMessage.Payload.Data)
+#if NET9_0_OR_GREATER
                                          : Convert.ToHexStringLower(errorMessage.Payload.Data);
+#else
+                                         : Convert.ToHexString(errorMessage.Payload.Data).ToLowerInvariant();
+#endif
 
                 _logger.LogError(
                     "Received error message from peer {peer} for channel {channelId}: {errorMessage}",
@@ -147,7 +151,11 @@ public sealed class PeerService : IPeerService
                 // Try to get utf8 string from error data
                 warningMessageString = Utf8.IsValid(warningMessage.Payload.Data)
                                            ? System.Text.Encoding.UTF8.GetString(warningMessage.Payload.Data)
+#if NET9_0_OR_GREATER
                                            : Convert.ToHexStringLower(warningMessage.Payload.Data);
+#else
+                                         : Convert.ToHexString(warningMessage.Payload.Data).ToLowerInvariant();
+#endif
 
                 _logger.LogError(
                     "Received error message from peer {peer} for channel {channelId}: {errorMessage}",
