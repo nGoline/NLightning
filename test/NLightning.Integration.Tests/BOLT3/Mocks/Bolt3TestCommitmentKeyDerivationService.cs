@@ -27,10 +27,9 @@ public class Bolt3TestCommitmentKeyDerivationService : ICommitmentKeyDerivationS
             _emptyCompactPubKey, Secret.Empty);
     }
 
-    public CommitmentKeys DeriveRemoteCommitmentKeys(uint localChannelKeyIndex, ChannelBasepoints localBasepoints,
+    public CommitmentKeys DeriveRemoteCommitmentKeys(ChannelBasepoints localBasepoints,
                                                      ChannelBasepoints remoteBasepoints,
-                                                     CompactPubKey remotePerCommitmentPoint,
-                                                     ulong commitmentNumber)
+                                                     CompactPubKey remotePerCommitmentPoint)
     {
         throw new NotImplementedException();
     }

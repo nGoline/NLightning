@@ -294,7 +294,7 @@ public class ChannelManager : IChannelManager
         // Check if the transaction is a funding transaction for any channel
         if (!_channelMemoryRepository.TryGetChannel(channelId, out var channel))
         {
-            // Channel not found in memory, check the database
+            // Channel isn't found in memory, check the database
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             channel = uow.ChannelDbRepository.GetByIdAsync(channelId).GetAwaiter().GetResult();
             if (channel is null)

@@ -113,12 +113,9 @@ public class FundingSignedMessageHandler : IChannelMessageHandler<FundingSignedM
         try
         {
             // Check if the channel already exists
-            var existingChannel = await _unitOfWork.ChannelDbRepository.GetByIdAsync(channel.ChannelId);
-            if (existingChannel is not null)
-                throw new ChannelWarningException("Channel already exists", channel.ChannelId,
-                                                  "This channel is already in our database");
-
-            await _unitOfWork.ChannelDbRepository.AddAsync(channel);
+            var existingChannel = await _unitOfWork.ChannelDbRepository.GetByIdAsync(channel.ChannelId) ?? throw new ChannelWarningException("Channel not found", channel.ChannelId,
+                                                  "This channel is missing in our database");
+            await _unitOfWork.ChannelDbRepository.UpdateAsync(channel);
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogDebug("Successfully persisted channel {ChannelId} to database", channel.ChannelId);

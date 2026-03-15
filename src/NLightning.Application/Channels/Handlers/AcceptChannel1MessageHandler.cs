@@ -215,6 +215,9 @@ public class AcceptChannel1MessageHandler : IChannelMessageHandler<AcceptChannel
             // Remove the temporary channel
             _channelMemoryRepository.RemoveTemporaryChannel(peerPubKey, oldChannelId);
 
+            // Update the locked utxos
+            _utxoMemoryRepository.UpgradeChannelIdOnLockedUtxos(oldChannelId, tempChannel.ChannelId);
+
             return fundingCreatedMessage;
         }
         catch (Exception e)

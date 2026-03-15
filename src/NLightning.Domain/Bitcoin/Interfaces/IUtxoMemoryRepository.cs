@@ -20,4 +20,5 @@ public interface IUtxoMemoryRepository
     List<UtxoModel> GetLockedUtxosForChannel(ChannelId channelId);
     List<UtxoModel> ReturnUtxosNotSpentOnChannel(ChannelId channelId);
     void ConfirmSpendOnChannel(ChannelId channelId);
+    void UpgradeChannelIdOnLockedUtxos(ChannelId oldChannelId, ChannelId newChannelId);
 }

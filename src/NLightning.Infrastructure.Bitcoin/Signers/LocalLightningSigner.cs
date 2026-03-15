@@ -272,7 +272,7 @@ public class LocalLightningSigner : ILightningSigner
 
                 try
                 {
-                    // Create the scriptPubKey and previous output based on address type
+                    // Create the scriptPubKey and previous output based on the address type
                     Script scriptPubKey;
                     ExtPrivKey signingExtKey;
                     Key signingKey;
@@ -357,8 +357,7 @@ public class LocalLightningSigner : ILightningSigner
                 throw new SignerException("No inputs were successfully signed", channelId, "Signing failed");
 
             // Update the transaction bytes in the SignedTransaction
-            var signedBytes = nBitcoinTx.ToBytes();
-            Array.Copy(signedBytes, unsignedTransaction.RawTxBytes, signedBytes.Length);
+            unsignedTransaction.RawTxBytes = nBitcoinTx.ToBytes();
 
             _logger.LogInformation(
                 "Successfully signed {SignedCount}/{TotalCount} inputs for funding transaction {TxId}",
@@ -514,18 +513,21 @@ public class LocalLightningSigner : ILightningSigner
     /// <summary>
     /// Sign a P2WPKH (Pay-to-Witness-PubKey-Hash) input
     /// </summary>
-    private void SignP2WpkhInput(Transaction tx, int inputIndex, Key signingKey, TxOut prevOut)
+    private static void SignP2WpkhInput(Transaction tx, int inputIndex, Key signingKey, TxOut prevOut)
     {
+        // For P2WPKH, the scriptCode is the P2PKH script: OP_DUP OP_HASH160 <pubkeyhash> OP_EQUALVERIFY OP_CHECKSIG
+        var scriptCode = signingKey.PubKey.Hash.ScriptPubKey;
+
         // Get the signature hash for SegWit v0
         var sigHash =
-            tx.GetSignatureHash(prevOut.ScriptPubKey, inputIndex, SigHash.All, prevOut, HashVersion.WitnessV0);
+            tx.GetSignatureHash(scriptCode, inputIndex, SigHash.All, prevOut, HashVersion.WitnessV0);
 
         // Sign the hash
-        var signature = signingKey.Sign(sigHash, new SigningOptions(SigHash.All, false));
+        var transactionSignature = signingKey.Sign(sigHash, new SigningOptions(SigHash.All, false));
 
         // For P2WPKH, witness is: <signature> <pubkey>
         var witness = new WitScript(
-            Op.GetPushOp(signature.Signature.ToDER()),
+            Op.GetPushOp(transactionSignature.ToBytes()),
             Op.GetPushOp(signingKey.PubKey.ToBytes()));
 
         tx.Inputs[inputIndex].WitScript = witness;

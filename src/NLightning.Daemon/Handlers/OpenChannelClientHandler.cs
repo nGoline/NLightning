@@ -37,17 +37,19 @@ public sealed class OpenChannelClientHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUtxoMemoryRepository _utxoMemoryRepository;
 
+    internal event EventHandler<EventArgs>? OnWaitingConfirmation;
+
     public ClientCommand Command => ClientCommand.OpenChannel;
 
-    public OpenChannelClientHandler(IBlockchainMonitor blockchainMonitor,
-                                    IChannelMemoryRepository channelMemoryRepository, IChannelFactory channelFactory,
+    public OpenChannelClientHandler(IBlockchainMonitor blockchainMonitor, IChannelFactory channelFactory,
+                                    IChannelMemoryRepository channelMemoryRepository,
                                     ILogger<OpenChannelClientHandler> logger, IMessageFactory messageFactory,
                                     IPeerManager peerManager, IUnitOfWork unitOfWork,
                                     IUtxoMemoryRepository utxoMemoryRepository)
     {
         _blockchainMonitor = blockchainMonitor;
-        _channelMemoryRepository = channelMemoryRepository;
         _channelFactory = channelFactory;
+        _channelMemoryRepository = channelMemoryRepository;
         _logger = logger;
         _messageFactory = messageFactory;
         _peerManager = peerManager;
@@ -87,7 +89,7 @@ public sealed class OpenChannelClientHandler
         try
         {
             // Select UTXOs and mark them as toSpend for this channel
-            _ = _utxoMemoryRepository.LockUtxosToSpendOnChannel(request.FundingAmount, channel.ChannelId);
+            var utxos = _utxoMemoryRepository.LockUtxosToSpendOnChannel(request.FundingAmount, channel.ChannelId);
 
             // Add the channel to dictionaries
             _channelMemoryRepository.AddTemporaryChannel(peerId, channel);
@@ -103,8 +105,9 @@ public sealed class OpenChannelClientHandler
             if (channel.ChannelConfig.MinimumDepth == 0)
                 channelTypeFeatureSet.SetFeature(Feature.OptionZeroconf, true);
 
-            var featureSetBytes = channelTypeFeatureSet.GetBytes() ?? throw new ClientException(ErrorCodes.InvalidOperation,
-                                          $"Error creating {nameof(ChannelTypeTlv)}. This should never happen.");
+            var featureSetBytes = channelTypeFeatureSet.GetBytes() ?? throw new ClientException(
+                                      ErrorCodes.InvalidOperation,
+                                      $"Error creating {nameof(ChannelTypeTlv)}. This should never happen.");
             var channelTypeTlv = new ChannelTypeTlv(featureSetBytes);
 
             // Create UpfrontShutdownScriptTlv if needed
@@ -165,25 +168,17 @@ public sealed class OpenChannelClientHandler
             return response;
 
             // Envelopes for the events
-            void ChannelMessageHandlerEnvelope(object? _, ChannelMessageEventArgs args)
-            {
+            void ChannelMessageHandlerEnvelope(object? _, ChannelMessageEventArgs args) =>
                 HandleChannelMessage(args, channel.ChannelId, tsc);
-            }
 
-            void AttentionMessageHandlerEnvelope(object? _, AttentionMessageEventArgs args)
-            {
+            void AttentionMessageHandlerEnvelope(object? _, AttentionMessageEventArgs args) =>
                 HandleAttentionMessage(args, channel.ChannelId, tsc);
-            }
 
-            void PeerDisconnectionEnvelope(object? _, PeerDisconnectedEventArgs args)
-            {
+            void PeerDisconnectionEnvelope(object? _, PeerDisconnectedEventArgs args) =>
                 HandlePeerDisconnection(args, channel.ChannelId, tsc);
-            }
 
-            void ExceptionRaisedEnvelope(object? _, Exception e)
-            {
+            void ExceptionRaisedEnvelope(object? _, Exception e) =>
                 HandleExceptionRaised(e, channel.ChannelId, tsc);
-            }
         }
         catch
         {
@@ -199,20 +194,40 @@ public sealed class OpenChannelClientHandler
         }
     }
 
-    private static void HandleChannelMessage(ChannelMessageEventArgs args, ChannelId _,
-                                             TaskCompletionSource<OpenChannelClientResponse> __)
+    private void HandleChannelMessage(ChannelMessageEventArgs args, ChannelId _,
+                                      TaskCompletionSource<OpenChannelClientResponse> tsc)
     {
-        if (args.Message.Type == MessageTypes.AcceptChannel)
+        // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
+        switch (args.Message.Type)
         {
-            Console.WriteLine("Channel accepted");
-        }
-        else if (args.Message.Type == MessageTypes.FundingSigned)
-        {
-            Console.WriteLine("Funding signed");
-        }
-        else
-        {
-            Console.WriteLine("Unknown message type: {0}", Enum.GetName(args.Message.Type));
+            case MessageTypes.AcceptChannel:
+                Console.WriteLine("Channel accepted");
+                break;
+            case MessageTypes.FundingSigned:
+                Console.WriteLine("Funding signed");
+                OnWaitingConfirmation?.Invoke(this, EventArgs.Empty);
+                break;
+            case MessageTypes.ChannelReady:
+                {
+                    Console.WriteLine("Channel ready");
+                    if (_channelMemoryRepository.TryGetChannel(args.Message.Payload.ChannelId, out var channel)
+                     && channel.FundingOutput?.TransactionId is not null
+                     && channel.FundingOutput?.Index is not null)
+                    {
+                        tsc.TrySetResult(new OpenChannelClientResponse(channel.FundingOutput.TransactionId.Value,
+                                                                       channel.FundingOutput.Index.Value,
+                                                                       channel.ChannelId));
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("Channel not found in memory repository");
+                    }
+
+                    break;
+                }
+            default:
+                Console.WriteLine("Unknown message type: {0}", Enum.GetName(args.Message.Type));
+                break;
         }
     }
 
@@ -223,11 +238,11 @@ public sealed class OpenChannelClientHandler
         tsc.TrySetException(new ChannelErrorException($"Error opening channel: {args.Message}"));
     }
 
-    private static void HandlePeerDisconnection(PeerDisconnectedEventArgs args, ChannelId _,
+    private static void HandlePeerDisconnection(PeerDisconnectedEventArgs _, ChannelId __,
                                                 TaskCompletionSource<OpenChannelClientResponse> tsc)
     {
         Console.Error.WriteLine("Peer disconnected");
-        tsc.TrySetException(new ChannelErrorException("Error opening channel: Peer disconnected"));
+        // tsc.TrySetException(new ChannelErrorException("Error opening channel: Peer disconnected"));
     }
 
     private static void HandleExceptionRaised(Exception e, ChannelId _,

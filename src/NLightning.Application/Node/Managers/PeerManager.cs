@@ -359,9 +359,7 @@ public sealed class PeerManager : IPeerManager
 
         var replyMessage = task.Result;
         if (replyMessage is not null)
-        {
             await peerService.SendMessageAsync(replyMessage);
-        }
     }
 
     private void HandleResponseMessageReady(object? sender, ChannelResponseMessageEventArgs args)

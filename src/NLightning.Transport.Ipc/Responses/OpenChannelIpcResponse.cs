@@ -12,7 +12,7 @@ using Domain.Client.Responses;
 [MessagePackObject]
 public sealed class OpenChannelIpcResponse
 {
-    [Key(0)] public required SignedTransaction Transaction { get; init; }
+    [Key(0)] public required TxId TxId { get; init; }
     [Key(2)] public uint Index { get; init; }
     [Key(3)] public ChannelId ChannelId { get; init; }
 
@@ -20,7 +20,7 @@ public sealed class OpenChannelIpcResponse
     {
         return new OpenChannelIpcResponse
         {
-            Transaction = clientResponse.Transaction,
+            TxId = clientResponse.TxId,
             Index = clientResponse.Index,
             ChannelId = clientResponse.ChannelId
         };

@@ -85,12 +85,15 @@ public class UtxoMemoryRepository : IUtxoMemoryRepository
 
     public List<UtxoModel> GetLockedUtxosForChannel(ChannelId channelId)
     {
-        return _utxoSet.Values.Where(x => x.LockedToChannelId.HasValue && x.LockedToChannelId.Value.Equals(channelId)).ToList();
+        return _utxoSet.Values.Where(x => x.LockedToChannelId.HasValue && x.LockedToChannelId.Value.Equals(channelId))
+                       .ToList();
     }
 
     public List<UtxoModel> ReturnUtxosNotSpentOnChannel(ChannelId channelId)
     {
-        var utxos = _utxoSet.Values.Where(x => x.LockedToChannelId.HasValue && x.LockedToChannelId.Value.Equals(channelId)).ToList();
+        var utxos = _utxoSet.Values
+                            .Where(x => x.LockedToChannelId.HasValue && x.LockedToChannelId.Value.Equals(channelId))
+                            .ToList();
         foreach (var utxo in utxos)
         {
             utxo.LockedToChannelId = null;
@@ -102,9 +105,26 @@ public class UtxoMemoryRepository : IUtxoMemoryRepository
 
     public void ConfirmSpendOnChannel(ChannelId channelId)
     {
-        var utxos = _utxoSet.Values.Where(x => x.LockedToChannelId.HasValue && x.LockedToChannelId.Value.Equals(channelId));
+        var utxos = _utxoSet.Values.Where(x => x.LockedToChannelId.HasValue &&
+                                               x.LockedToChannelId.Value.Equals(channelId));
         foreach (var utxo in utxos)
             _utxoSet.TryRemove((utxo.TxId, utxo.Index), out _);
+    }
+
+    public void UpgradeChannelIdOnLockedUtxos(ChannelId oldChannelId, ChannelId newChannelId)
+    {
+        var utxos = _utxoSet.Values
+                            .Where(x => x.LockedToChannelId.HasValue && x.LockedToChannelId.Value.Equals(oldChannelId))
+                            .ToList();
+        // If there's no locked utxos, we have a problem
+        if (utxos.Count == 0)
+            throw new InvalidOperationException("No available UTXOs");
+
+        foreach (var utxo in utxos)
+        {
+            utxo.LockedToChannelId = newChannelId;
+            _utxoSet[(utxo.TxId, utxo.Index)] = utxo;
+        }
     }
 
     private static List<UtxoModel>? BranchAndBound(List<UtxoModel> utxos, LightningMoney targetAmount)

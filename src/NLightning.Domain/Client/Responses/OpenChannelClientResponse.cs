@@ -5,13 +5,13 @@ using Channels.ValueObjects;
 
 public sealed class OpenChannelClientResponse
 {
-    public SignedTransaction Transaction { get; }
-    public uint Index { get; }
+    public TxId TxId { get; }
+    public ushort Index { get; }
     public ChannelId ChannelId { get; }
 
-    public OpenChannelClientResponse(SignedTransaction transaction, uint index, ChannelId channelId)
+    public OpenChannelClientResponse(TxId txId, ushort index, ChannelId channelId)
     {
-        Transaction = transaction;
+        TxId = txId;
         Index = index;
         ChannelId = channelId;
     }

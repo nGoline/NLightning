@@ -206,9 +206,6 @@ public class ChannelOpeningFlowTests : IDisposable
         // Start the blockchain monitor at the current height
         await _blockchainMonitor.StartAsync(currentHeight, CancellationToken.None);
 
-        // Wait a bit for initialization
-        // await Task.Delay(1000);
-
         // Fund our wallet
         using (var scope = _serviceProvider.CreateScope())
         {
@@ -237,9 +234,7 @@ public class ChannelOpeningFlowTests : IDisposable
             void OnNewBlockDetected(object? _, NewBlockEventArgs e)
             {
                 if (e.Height >= txFirstSeenInBlock + 5)
-                {
                     tsc.TrySetResult(true);
-                }
             }
 
             _blockchainMonitor.OnWalletMovementDetected += OnWalletMovementDetected;
@@ -284,15 +279,22 @@ public class ChannelOpeningFlowTests : IDisposable
                                     $"Unable to get service {nameof(OpenChannelClientHandler)}");
             var request = new OpenChannelClientRequest(
                 aliceAddress,
-                LightningMoney.Satoshis(1000000) // 0.01 BTC
-            );
+                LightningMoney.Satoshis(1000000) // 0.01 BTC,
+            )
+            {
+                FeeRatePerKw = LightningMoney.Satoshis(10000)
+            };
+
+            // Subscribe to the event and mine blocks when needed
+            clientHandler.OnWaitingConfirmation += async (_, _) =>
+            {
+                // Mine blocks to confirm
+                await bitcoin.GenerateToAddressAsync(6, await bitcoin.GetNewAddressAsync());
+            };
 
             // Act - Open the channel (this should send open_channel and wait for the flow to complete)
             openChannelTask = clientHandler.HandleAsync(request, CancellationToken.None);
         }
-
-        // Mine blocks to confirm
-        await bitcoin.GenerateToAddressAsync(6, await bitcoin.GetNewAddressAsync());
 
         var channelResponse = await openChannelTask;
         Assert.NotNull(channelResponse);
