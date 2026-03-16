@@ -242,7 +242,7 @@ public sealed class OpenChannelClientHandler
                                                 TaskCompletionSource<OpenChannelClientResponse> tsc)
     {
         Console.Error.WriteLine("Peer disconnected");
-        // tsc.TrySetException(new ChannelErrorException("Error opening channel: Peer disconnected"));
+        tsc.TrySetException(new ChannelErrorException("Error opening channel: Peer disconnected"));
     }
 
     private static void HandleExceptionRaised(Exception e, ChannelId _,
