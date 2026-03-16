@@ -96,11 +96,11 @@ try
                            ?? throw new InvalidOperationException("Node configuration section is missing or invalid.");
 
             // Instantiate the service
-            var bitcoinWalletService = new BitcoinChainService(Options.Create(bitcoinOptions), walletLogger,
-                                                               Options.Create(nodeOptions)
+            var bitcoinChainService = new BitcoinChainService(Options.Create(bitcoinOptions), walletLogger,
+                                                              Options.Create(nodeOptions)
             );
 
-            var heightOfBirth = await bitcoinWalletService.GetCurrentBlockHeightAsync();
+            var heightOfBirth = await bitcoinChainService.GetCurrentBlockHeightAsync();
 
             // Creates new key
             var key = new Key();

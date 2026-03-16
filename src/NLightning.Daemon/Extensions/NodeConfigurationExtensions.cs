@@ -163,7 +163,6 @@ public static class NodeConfigurationExtensions
                      "0.0.0.0:9735"
                    ],
                    "Features": {
-                     "StaticRemoteKey": "Compulsory"
                    }
                  },
                  "FeeEstimation": {

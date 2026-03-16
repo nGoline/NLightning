@@ -12,7 +12,7 @@ public enum Feature
     /// 0 is for the compulsory bit, 1 is for the optional bit.
     /// </summary>
     /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports the data_loss_protect field in the channel_reestablish message.
+    /// This feature is compulsory and is used to indicate that the node supports the data_loss_protect field in the channel_reestablish message.
     /// </remarks>
     OptionDataLossProtect = 1,
 
@@ -52,7 +52,7 @@ public enum Feature
     /// 12 is for the compulsory bit, 13 is for the optional bit.
     /// </summary>
     /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports static_remotekey.
+    /// This feature is compulsory and is used to indicate that the node supports static_remotekey.
     /// </remarks>
     OptionStaticRemoteKey = 13,
 
@@ -60,7 +60,7 @@ public enum Feature
     /// 14 is for the compulsory bit, 15 is for the optional bit.
     /// </summary>
     /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports payment_secret.
+    /// This feature is compulsory and is used to indicate that the node supports payment_secret.
     /// </remarks>
     PaymentSecret = 15,
 
@@ -148,7 +148,7 @@ public enum Feature
     /// 44 is for the compulsory bit, 45 is for the optional bit.
     /// </summary>
     /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports channel type.
+    /// This feature is compulsory and is used to indicate that the node supports channel type.
     /// </remarks>
     OptionChannelType = 45,
 

@@ -244,7 +244,8 @@ public class LocalLightningSigner : ILightningSigner
 
             var signedInputCount = 0;
             var prevOuts = new TxOut[nBitcoinTx.Inputs.Count];
-            var signingKeys = new Key[nBitcoinTx.Inputs.Count];
+            var signingKeys = new Key?[nBitcoinTx.Inputs.Count];
+            var taprootKeyPairs = new TaprootKeyPair?[nBitcoinTx.Inputs.Count];
             var utxos = new UtxoModel[nBitcoinTx.Inputs.Count];
 
             // Sign each input
@@ -275,7 +276,8 @@ public class LocalLightningSigner : ILightningSigner
                     // Create the scriptPubKey and previous output based on the address type
                     Script scriptPubKey;
                     ExtPrivKey signingExtKey;
-                    Key signingKey;
+                    Key? signingKey = null;
+                    TaprootKeyPair? taprootKeyPair = null;
 
                     switch (utxo.AddressType)
                     {
@@ -294,9 +296,10 @@ public class LocalLightningSigner : ILightningSigner
                             signingExtKey =
                                 _secureKeyManager.GetDepositP2TrKeyAtIndex(
                                     utxo.WalletAddress.Index, utxo.WalletAddress.IsChange);
-                            signingKey = ExtKey.CreateFromBytes(signingExtKey).PrivateKey;
+                            var rootKey = ExtKey.CreateFromBytes(signingExtKey).PrivateKey;
                             // For P2TR (Taproot): OP_1 <32-byte-taproot-output>
-                            scriptPubKey = signingKey.PubKey.GetTaprootFullPubKey().ScriptPubKey;
+                            taprootKeyPair = rootKey.CreateTaprootKeyPair();
+                            scriptPubKey = taprootKeyPair.PubKey.ScriptPubKey;
                             break;
 
                         default:
@@ -305,6 +308,7 @@ public class LocalLightningSigner : ILightningSigner
                     }
 
                     signingKeys[i] = signingKey;
+                    taprootKeyPairs[i] = taprootKeyPair;
                     prevOuts[i] = new TxOut(new Money(utxo.Amount.Satoshi), scriptPubKey);
                 }
                 catch (Exception ex)
@@ -322,18 +326,25 @@ public class LocalLightningSigner : ILightningSigner
                 {
                     var utxo = utxos[i];
                     var signingKey = signingKeys[i];
+                    var taprootKeyPair = taprootKeyPairs[i];
                     var prevOut = prevOuts[i];
 
                     switch (utxo.AddressType)
                     {
                         // Sign based on the address type
                         case AddressType.P2Wpkh:
+                            if (signingKey is null)
+                                throw new SignerException($"Missing signing key for P2WPKH input {i}", channelId);
+
                             // Sign P2WPKH input
                             SignP2WpkhInput(nBitcoinTx, i, signingKey, prevOut);
                             break;
                         case AddressType.P2Tr:
+                            if (taprootKeyPair is null)
+                                throw new SignerException($"Missing taproot key pair for P2TR input {i}", channelId);
+
                             // Sign P2TR (Taproot) input - key path spend
-                            SignP2TrInput(nBitcoinTx, i, signingKey, prevOuts);
+                            SignP2TrInput(nBitcoinTx, i, taprootKeyPair, prevOuts);
                             break;
                         default:
                             throw new SignerException($"Unsupported address type {utxo.AddressType} for input {i}",
@@ -537,17 +548,19 @@ public class LocalLightningSigner : ILightningSigner
     /// Sign a P2TR (Pay-to-Taproot) input using the key path spend
     /// </summary>
     /// <remarks>For Taproot, we use BIP341 signing</remarks>
-    private static void SignP2TrInput(Transaction tx, int inputIndex, Key signingKey, TxOut[] prevOuts)
+    private static void SignP2TrInput(Transaction tx, int inputIndex, TaprootKeyPair taprootKeyPair, TxOut[] prevOuts)
     {
         // Create the TaprootExecutionData
-        // var taprootPubKey = signingKey.PubKey.GetTaprootFullPubKey();
-        var taprootExecutionData = new TaprootExecutionData(inputIndex);
+        var taprootExecutionData = new TaprootExecutionData(inputIndex)
+        {
+            SigHash = TaprootSigHash.All
+        };
 
         // Calculate the signature hash using Taproot rules (BIP341)
         var sigHash = tx.GetSignatureHashTaproot(prevOuts.ToArray(), taprootExecutionData);
 
         // Sign with Schnorr signature (BIP340)
-        var taprootSignature = signingKey.SignTaprootKeySpend(sigHash, TaprootSigHash.All);
+        var taprootSignature = taprootKeyPair.SignTaprootKeySpend(sigHash, TaprootSigHash.All);
 
         // For key path spend, witness is just: <signature>
         tx.Inputs[inputIndex].WitScript = new WitScript(Op.GetPushOp(taprootSignature.ToBytes()));

@@ -19,10 +19,6 @@ public class FeatureSet
     {
         // This \/ --- Depends on this \/
         { Feature.GossipQueriesEx, [Feature.GossipQueries] },
-        { Feature.PaymentSecret, [Feature.VarOnionOptin] },
-        { Feature.BasicMpp, [Feature.PaymentSecret] },
-        { Feature.OptionAnchors, [Feature.OptionStaticRemoteKey] },
-        { Feature.OptionRouteBlinding, [Feature.VarOnionOptin] },
         { Feature.OptionZeroconf, [Feature.OptionScidAlias] },
     };
 

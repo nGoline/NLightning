@@ -2,6 +2,7 @@ using NBitcoin;
 
 namespace NLightning.Integration.Tests.Docker.Mock;
 
+using Domain.Bitcoin.Constants;
 using Domain.Bitcoin.ValueObjects;
 using Domain.Crypto.ValueObjects;
 using Domain.Protocol.Interfaces;
@@ -11,6 +12,9 @@ public class FakeSecureKeyManager : ISecureKeyManager
     private readonly ExtKey _nodeKey;
     private readonly ExtKey _p2TrKey;
     private readonly ExtKey _p2WpkhKey;
+
+    private readonly KeyPath _depositP2TrKeyPath = new(KeyConstants.P2TrKeyPathString);
+    private readonly KeyPath _depositP2WpkhKeyPath = new(KeyConstants.P2WpkhKeyPathString);
 
     public BitcoinKeyPath KeyPath => new BitcoinKeyPath([]);
 
@@ -40,12 +44,12 @@ public class FakeSecureKeyManager : ISecureKeyManager
 
     public ExtPrivKey GetDepositP2TrKeyAtIndex(uint index, bool isChange)
     {
-        return _p2TrKey.ToBytes();
+        return _p2TrKey.Derive(_depositP2TrKeyPath.Derive(isChange ? "1" : "0")).Derive(index).ToBytes();
     }
 
     public ExtPrivKey GetDepositP2WpkhKeyAtIndex(uint index, bool isChange)
     {
-        return _p2WpkhKey.ToBytes();
+        return _p2WpkhKey.Derive(_depositP2WpkhKeyPath.Derive(isChange ? "1" : "0")).Derive(index).ToBytes();
     }
 
     public CryptoKeyPair GetNodeKeyPair()

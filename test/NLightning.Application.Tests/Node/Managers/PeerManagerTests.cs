@@ -342,7 +342,7 @@ public class PeerManagerTests
         await Task.Delay(100, TestContext.Current.CancellationToken);
 
         // Then
-        _mockPeerService.Verify(p => p.Disconnect(null), Times.Once);
+        _mockPeerService.Verify(p => p.Disconnect(channelError), Times.Once);
         _mockLogger.Verify(
             l => l.Log(
                 LogLevel.Error,
