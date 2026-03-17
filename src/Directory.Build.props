@@ -13,8 +13,8 @@
     <!--Package props-->
     <PropertyGroup>
         <Authors>Nickolas Goline</Authors>
-        <Copyright>Copyright © Níckolas Goline 2024-2025</Copyright>
-        <RepositoryUrl>https://github.com/ipms-io/nlightning</RepositoryUrl>
+        <Copyright>Copyright © Níckolas Goline 2024-2026</Copyright>
+        <RepositoryUrl>https://github.com/ngoline/nlightning</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <NeutralLanguage>en</NeutralLanguage>
         <Icon>logo.png</Icon>

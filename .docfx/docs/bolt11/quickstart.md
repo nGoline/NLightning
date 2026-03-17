@@ -43,7 +43,7 @@ Console.WriteLine(invoice.Amount.MilliSatoshi);
 Console.WriteLine(invoice.Amount.Satoshi);
 Console.WriteLine(invoice.Amount); // In Bitcoin
 Console.WriteLine(invoice.PaymentHash);
-Console.WriteLine("A list with all the props can be found at: https://nlightning.ipms.io/api/NLightning.Bolts.BOLT11.Invoice.html#properties");
+Console.WriteLine("A list with all the props can be found at: https://docs.nlightn.ing/api/NLightning.Bolts.BOLT11.Invoice.html#properties");
 ```
 
 ### Encoding

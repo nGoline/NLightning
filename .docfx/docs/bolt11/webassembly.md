@@ -5,9 +5,10 @@ It can be used to decode and/or encode BOLT11 invoices in a WebAssembly app.
 
 ## Sample
 
-A sample project using this project in a Blazor WebAssembly environment can be found [here](https://github.com/ipms-io/NLightning-Samples/tree/main/Bolt11.Decoder.Blazor).
+A sample project using this project in a Blazor WebAssembly environment can be
+found [here](https://github.com/ngoline/NLightning-Samples/tree/main/Bolt11.Decoder.Blazor).
 
-A live version of the sample can be found at [bolt11.ipms.io](https://bolt11.ipms.io)
+A live version of the sample can be found at [bolt11.nlightn.ing](https://bolt11.nlightn.ing)
 
 ## Usage
 
@@ -23,7 +24,7 @@ dotnet add package NLightning.Bolt11.Blazor
 
 ### Decoding
 
-Blazor apps need to initialize the CryptoProvider in order to load the needed js files. Add the following to your
+Blazor apps need to initialize the CryptoProvider to load the necessary js files. Add the following to your
 `Program.cs` file.
 
 #### Initialize the CryptoProvider (libsodium.js)

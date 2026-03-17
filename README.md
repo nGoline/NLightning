@@ -1,10 +1,10 @@
 # NLightning - A C# dotNet Lightning Implementation
 
-[![CI Build](https://github.com/ipms-io/nlightning/actions/workflows/dotnet.yml/badge.svg)](https://github.com/ipms-io/nlightning/actions/workflows/dotnet.yml)
+[![CI Build](https://github.com/ngoline/nlightning/actions/workflows/dotnet.yml/badge.svg)](https://github.com/ngoline/nlightning/actions/workflows/dotnet.yml)
 &nbsp;
-[![GitHub](https://img.shields.io/badge/GitHub-ipms--io/nlightning-informational?style=flat&logo=github)](https://github.com/ipms-io/nlightning)
+[![GitHub](https://img.shields.io/badge/GitHub-ngoline/nlightning-informational?style=flat&logo=github)](https://github.com/ngoline/nlightning)
 &nbsp;
-[![MIT License](https://img.shields.io/github/license/ipms-io/nlightning)](LICENSE)
+[![MIT License](https://img.shields.io/github/license/ngoline/nlightning)](LICENSE)
 &nbsp;
 ![.NET 9.0](https://img.shields.io/badge/Version-.NET%209.0-informational?style=flat&logo=dotnet)
 
@@ -67,7 +67,7 @@ SDK versions outside the 9.x line (e.g., 8.x or 10.x) are not supported.
 First, clone the NLightning repository to your local machine using Git:
 
 ```sh
-git clone https://github.com/ipms-io/nlightning.git
+git clone https://github.com/ngoline/nlightning.git
 cd nlightning
 ```
 
@@ -92,7 +92,7 @@ documentation, your contributions are invaluable to making NLightning fully oper
 
 To start contributing:
 
-- Explore the [Issues](https://github.com/ipms-io/nlightning/issues) section on GitHub to find out what needs to be
+- Explore the [Issues](https://github.com/ngoline/nlightning/issues) section on GitHub to find out what needs to be
   worked on.
 - Review our [Contributing Guidelines](CONTRIBUTING.md) for details on making contributions, such as how to create pull
   requests.
@@ -157,7 +157,6 @@ supporter of open-source innovation, your contribution is immensely appreciated.
 
 If you find this project useful, consider supporting us:
 
-- **LNAddress**: `nlightning@ipms.io`
 - **Bitcoin on-chain address**: `bc1pgtdj7qtdfrate2hhnt5lecayvgafhmpu6t250dg7d0sdrwtwcnkq8usux8`
 
 No matter the size, every donation makes a difference and is deeply appreciated. Together, we can make NLightning a
@@ -168,4 +167,4 @@ Thank you for your support and belief in our project.
 ## Contact
 
 If you have any questions, feedback, or suggestions, feel free to reach out to us at
-[reachus@ipms.io](mailto:reachus@ipms.io).
+[reachus@nlightn.ing](mailto:reachus@nlightn.ing).

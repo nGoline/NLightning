@@ -6,7 +6,8 @@ and testing purposes.
 ## Prerequisites
 
 Before you begin, ensure you have the following installed on your system:
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) or later
+
+- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) or later
 - Git (for cloning the repository)
 
 ## Installation
@@ -16,7 +17,7 @@ Before you begin, ensure you have the following installed on your system:
 First, clone the NLightning repository to your local machine using Git:
 
 ```sh
-git clone https://github.com/ipms-io/nlightning.git
+git clone https://github.com/ngoline/nlightning.git
 cd nlightning
 ```
 
@@ -41,8 +42,10 @@ documentation, your contributions are invaluable to making NLightning fully oper
 
 To start contributing:
 
-- Explore the [Issues](https://github.com/ipms-io/nlightning/issues) section on GitHub to find out what needs to be worked on.
-- Review our [Contributing Guidelines](contributing) for details on making contributions, such as how to create pull requests.
+- Explore the [Issues](https://github.com/ngoline/nlightning/issues) section on GitHub to find out what needs to be
+  worked on.
+- Review our [Contributing Guidelines](contributing) for details on making contributions, such as how to create pull
+  requests.
 - If you have a new idea or feature you'd like to work on, don't hesitate to open a new issue to discuss it with the
 - project maintainers.
 

@@ -15,13 +15,14 @@ You can check our documentation page [here](docs/features) and our API documenta
 ## Repository
 
 The code can, as well as building and running instructions, can be found on our
-[GitHub repository](https://github.com/ipms-io/nlightning).
+[GitHub repository](https://github.com/ngoline/nlightning).
 
 ## Code Coverage
 
-View our [code coverage reports](docs/coverage-reports/index.html) to understand the test coverage status of our codebase.
+View our [code coverage reports](docs/coverage-reports/index.html) to understand the test coverage status of our
+codebase.
 
 ## Contact
 
 If you have any questions, feedback, or suggestions, feel free to reach out to us at
-[reachus@ipms.io](mailto:reachus@ipms.io).
+[reachus@nlightn.ing](mailto:reachus@nlightn.ing).

@@ -16,7 +16,7 @@
     <AssemblyVersion>4.0.5</AssemblyVersion>
     <FileVersion>4.0.5</FileVersion>
     <PackageTags>lightning,invoice,bolt11,encoder,decoder</PackageTags>
-    <PackageProjectUrl>https://nlightning.ipms.io/api/NLightning.Bolt11.Models.Invoice.html</PackageProjectUrl>
+    <PackageProjectUrl>https://docs.nlightn.ing/api/NLightning.Bolt11.Models.Invoice.html</PackageProjectUrl>
     <PackageId>NLightning.Bolt11</PackageId>
     <PackageReleaseNotes>Fixed an error when decoding `PayeePubKeyTaggedField`.</PackageReleaseNotes>
   </PropertyGroup>
