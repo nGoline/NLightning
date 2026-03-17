@@ -28,7 +28,7 @@
 //             return; // Skip this test on GitHub Actions if using UDP
 //         }
 //
-//         var results = DnsSeedClient.FindNodes(10, ["_lightning._dnstest.ipms.io"], false, useTcp: tcpOnly, [IPAddress.Parse("8.8.8.8")]);
+//         var results = DnsSeedClient.FindNodes(10, ["_lightning._dnstest.nlightn.ing"], false, useTcp: tcpOnly, [IPAddress.Parse("8.8.8.8")]);
 //         Assert.True(results.Count > 0, "No seeds returned.");
 //         foreach (var r in results)
 //         {
@@ -46,7 +46,7 @@
 //             return; // Skip this test on GitHub Actions if using UDP
 //         }
 //
-//         var results = DnsSeedClient.FindNodes(10, ["dnstest.ipms.io"], true, useTcp: tcpOnly, [IPAddress.Parse("8.8.8.8")]);
+//         var results = DnsSeedClient.FindNodes(10, ["dnstest.nlightn.ing"], true, useTcp: tcpOnly, [IPAddress.Parse("8.8.8.8")]);
 //         Assert.True(results.Count > 0, "No seeds returned.");
 //         foreach (var r in results)
 //         {

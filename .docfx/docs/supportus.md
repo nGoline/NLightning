@@ -26,9 +26,6 @@ supporter of open-source innovation, your contribution is immensely appreciated.
 
 If you find this project useful, consider supporting us:
 
-- ~~**LNBits Store** (set amounts): [Donate Here](https://t.ly/3E_Nd)~~ (DEPRECATED)
-- ~~**LNURL** (donate any amount): [Donate Here](https://t.ly/WHHC_)~~ (DEPRECATED)
-- **LNAddress**: `nlightning@ipms.io`
 - **Bitcoin on-chain address**: `bc1pgtdj7qtdfrate2hhnt5lecayvgafhmpu6t250dg7d0sdrwtwcnkq8usux8`
 
 No matter the size, every donation makes a difference and is deeply appreciated. Together, we can make NLightning a
@@ -39,4 +36,4 @@ Thank you for your support and belief in our project.
 ## Contact
 
 If you have any questions, feedback, or suggestions, feel free to reach out to us at
-[reachus@ipms.io](mailto:reachus@ipms.io).
+[reachus@nlightn.ing](mailto:reachus@nlightn.ing).

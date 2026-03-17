@@ -16,7 +16,7 @@
     <AssemblyVersion>1.0.3</AssemblyVersion>
     <FileVersion>1.0.3</FileVersion>
     <PackageTags>lightning-network,bitcoin,crypto,infrastructure,dotnet,cryptography,cross-platform,libsodium,blazor,webassembly,aot</PackageTags>
-    <PackageProjectUrl>https://nlightning.ipms.io/api/NLightning.Infrastructure.html</PackageProjectUrl>
+    <PackageProjectUrl>https://docs.nlightn.ing/api/NLightning.Infrastructure.html</PackageProjectUrl>
     <PackageId>NLightning.Infrastructure</PackageId>
     <PackageReleaseNotes>Fixed an error on `SodiumJsCryptoProvider` where Blazor apps whould be unable to call `Sha256.GetHashAndReset`.</PackageReleaseNotes>
   </PropertyGroup>

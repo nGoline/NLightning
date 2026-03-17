@@ -30,7 +30,7 @@ public class PeerAddressTests
         // Arrange
         CompactPubKey pubKey =
             Convert.FromHexString("028d7500dd4c12685d1f568b4c2b5048e8534b873319f3a8daa612b469132ec7f7");
-        const string address = "http://dnstest.ipms.io:8080/";
+        const string address = "http://dnstest.nlightn.ing:8080/";
 
         // Act
         var peerAddress = new PeerAddress(pubKey, address);

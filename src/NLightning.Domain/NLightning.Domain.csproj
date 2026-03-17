@@ -10,7 +10,7 @@
     <AssemblyVersion>1.1.2</AssemblyVersion>
     <FileVersion>1.1.2</FileVersion>
     <PackageTags>lightning-network,bitcoin,crypto,infrastructure,dotnet,cryptography,cross-platform,libsodium,blazor,webassembly,aot</PackageTags>
-    <PackageProjectUrl>https://nlightning.ipms.io/api/NLightning.Domain.html</PackageProjectUrl>
+    <PackageProjectUrl>https://docs.nlightn.ing/api/NLightning.Domain.html</PackageProjectUrl>
     <PackageId>NLightning.Domain</PackageId>
     <PackageReleaseNotes>This version removes a Span size check from `BitReader` since the calculations are complex and should be done by the caller.</PackageReleaseNotes>
   </PropertyGroup>
