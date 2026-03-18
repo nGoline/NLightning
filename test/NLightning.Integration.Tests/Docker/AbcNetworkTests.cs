@@ -14,7 +14,6 @@ using NLightning.Infrastructure.Persistence.Contexts;
 using NLightning.Tests.Utils;
 using ServiceStack;
 using ServiceStack.Text;
-using Xunit.Abstractions;
 
 namespace NLightning.Integration.Tests.Docker;
 
@@ -180,13 +179,17 @@ public class AbcNetworkTests : IDisposable
 
         var aliceHost = new IPEndPoint((await Dns.GetHostAddressesAsync(alice.Host
                                                                              .SplitOnFirst("//")[1]
-                                                                             .SplitOnFirst(":")[0])).First(), 9735);
+                                                                             .SplitOnFirst(":")[0],
+                                                                        TestContext.Current.CancellationToken)).First(),
+                                       9735);
 
         // Act
         await _peerManager.ConnectToPeerAsync(
             new PeerAddressInfo(
                 $"{Convert.ToHexString(alice.LocalNodePubKeyBytes)}@{aliceHost.Address}:{aliceHost.Port}"));
-        var alicePeers = alice.LightningClient.ListPeers(new ListPeersRequest());
+        var alicePeers =
+            alice.LightningClient.ListPeers(new ListPeersRequest(),
+                                            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(alicePeers.Peers.FirstOrDefault(x => x.PubKey
@@ -225,8 +228,9 @@ public class AbcNetworkTests : IDisposable
                 Host = $"{hostAddress}:{_port}",
                 Pubkey = hex
             }
-        });
-        var bobPeers = bob.LightningClient.ListPeers(new ListPeersRequest());
+        }, cancellationToken: TestContext.Current.CancellationToken);
+        var bobPeers = bob.LightningClient.ListPeers(new ListPeersRequest(),
+                                                     cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(await taskCompletionSource.Task);
@@ -246,8 +250,12 @@ public class AbcNetworkTests : IDisposable
         $"LND Nodes in Ready State: {nodeCount}".Print();
         foreach (var node in readyNodes)
         {
-            var walletBalanceResponse = await node.LightningClient.WalletBalanceAsync(new WalletBalanceRequest());
-            var channels = await node.LightningClient.ListChannelsAsync(new ListChannelsRequest());
+            var walletBalanceResponse =
+                await node.LightningClient.WalletBalanceAsync(new WalletBalanceRequest(),
+                                                              cancellationToken: TestContext.Current.CancellationToken);
+            var channels =
+                await node.LightningClient.ListChannelsAsync(new ListChannelsRequest(),
+                                                             cancellationToken: TestContext.Current.CancellationToken);
             $"Node {node.LocalAlias} ({node.LocalNodePubKey})".Print();
             walletBalanceResponse.PrintDump();
             channels.PrintDump();

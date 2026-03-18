@@ -24,7 +24,9 @@ public class StfuMessageTests
         var expectedChannelId = ChannelId.Zero;
         var expectedInitiator = true;
 
-        var stream = new MemoryStream(Convert.FromHexString("000000000000000000000000000000000000000000000000000000000000000001"));
+        var stream =
+            new MemoryStream(
+                Convert.FromHexString("000000000000000000000000000000000000000000000000000000000000000001"));
 
         // Act
         var message = await _stfuMessageTypeSerializer.DeserializeAsync(stream);
@@ -48,7 +50,7 @@ public class StfuMessageTests
         await _stfuMessageTypeSerializer.SerializeAsync(message, stream);
         stream.Position = 0;
         var result = new byte[stream.Length];
-        _ = await stream.ReadAsync(result);
+        _ = await stream.ReadAsync(result, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedBytes, result);

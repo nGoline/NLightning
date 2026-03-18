@@ -7,7 +7,7 @@ and testing purposes.
 
 Before you begin, ensure you have the following installed on your system:
 
-- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) or later
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) or later
 - Git (for cloning the repository)
 
 ## Installation

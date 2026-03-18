@@ -106,7 +106,7 @@ public class TxInitRbfMessageTests
         await _txInitRbfMessageTypeSerializer.SerializeAsync(message, stream);
         stream.Position = 0;
         var result = new byte[stream.Length];
-        _ = await stream.ReadAsync(result);
+        _ = await stream.ReadAsync(result, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedBytes, result);
@@ -132,7 +132,7 @@ public class TxInitRbfMessageTests
         await _txInitRbfMessageTypeSerializer.SerializeAsync(message, stream);
         stream.Position = 0;
         var result = new byte[stream.Length];
-        _ = await stream.ReadAsync(result);
+        _ = await stream.ReadAsync(result, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedBytes, result);

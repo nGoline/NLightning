@@ -18,6 +18,7 @@ public class UpdateFailHtlcMessageTests
     }
 
     #region Deserialize
+
     [Fact]
     public async Task Given_ValidStream_When_DeserializeAsync_Then_ReturnsUpdateFailHtlcMessage()
     {
@@ -26,7 +27,8 @@ public class UpdateFailHtlcMessageTests
         var expectedId = 0UL;
         var expectedReason = Convert.FromHexString("567cbdadb00b825448b2e414487d73");
         var expectedLen = expectedReason.Length;
-        var stream = new MemoryStream(Convert.FromHexString("00000000000000000000000000000000000000000000000000000000000000000000000000000000000F567CBDADB00B825448B2E414487D73"));
+        var stream = new MemoryStream(Convert.FromHexString(
+                                          "00000000000000000000000000000000000000000000000000000000000000000000000000000000000F567CBDADB00B825448B2E414487D73"));
 
         // Act
         var message = await _updateFailHtlcMessageTypeSerializer.DeserializeAsync(stream);
@@ -38,9 +40,11 @@ public class UpdateFailHtlcMessageTests
         Assert.Equal(expectedReason, message.Payload.Reason);
         Assert.Null(message.Extension);
     }
+
     #endregion
 
     #region Serialize
+
     [Fact]
     public async Task Given_ValidPayloadWith_When_SerializeAsync_Then_WritesCorrectDataToStream()
     {
@@ -50,16 +54,19 @@ public class UpdateFailHtlcMessageTests
         var expectedReason = Convert.FromHexString("567cbdadb00b825448b2e414487d73");
         var message = new UpdateFailHtlcMessage(new UpdateFailHtlcPayload(channelId, id, expectedReason));
         var stream = new MemoryStream();
-        var expectedBytes = Convert.FromHexString("00000000000000000000000000000000000000000000000000000000000000000000000000000000000F567CBDADB00B825448B2E414487D73");
+        var expectedBytes =
+            Convert.FromHexString(
+                "00000000000000000000000000000000000000000000000000000000000000000000000000000000000F567CBDADB00B825448B2E414487D73");
 
         // Act
         await _updateFailHtlcMessageTypeSerializer.SerializeAsync(message, stream);
         stream.Position = 0;
         var result = new byte[stream.Length];
-        _ = await stream.ReadAsync(result);
+        _ = await stream.ReadAsync(result, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedBytes, result);
     }
+
     #endregion
 }

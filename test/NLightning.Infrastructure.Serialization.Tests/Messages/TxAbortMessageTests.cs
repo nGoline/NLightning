@@ -23,7 +23,9 @@ public class TxAbortMessageTests
         // Arrange
         var expectedChannelId = ChannelId.Zero;
         var expectedData = "Some error"u8.ToArray();
-        var stream = new MemoryStream(Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000000A536F6D65206572726F72"));
+        var stream =
+            new MemoryStream(Convert.FromHexString(
+                                 "0000000000000000000000000000000000000000000000000000000000000000000A536F6D65206572726F72"));
 
         // Act
         var message = await _txAbortMessageTypeSerializer.DeserializeAsync(stream);
@@ -42,13 +44,15 @@ public class TxAbortMessageTests
         var data = "Some error"u8.ToArray();
         var message = new TxAbortMessage(new TxAbortPayload(channelId, data));
         var stream = new MemoryStream();
-        var expectedBytes = Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000000A536F6D65206572726F72");
+        var expectedBytes =
+            Convert.FromHexString(
+                "0000000000000000000000000000000000000000000000000000000000000000000A536F6D65206572726F72");
 
         // Act
         await _txAbortMessageTypeSerializer.SerializeAsync(message, stream);
         stream.Position = 0;
         var result = new byte[stream.Length];
-        _ = await stream.ReadAsync(result);
+        _ = await stream.ReadAsync(result, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedBytes, result);

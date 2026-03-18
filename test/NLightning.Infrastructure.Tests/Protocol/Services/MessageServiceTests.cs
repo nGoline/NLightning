@@ -28,7 +28,8 @@ public class MessageServiceTests
         var messageMock = new Mock<IMessage>();
 
         // When
-        await messageService.SendMessageAsync(messageMock.Object);
+        await messageService.SendMessageAsync(messageMock.Object,
+                                              cancellationToken: TestContext.Current.CancellationToken);
 
         // Then
         transportServiceMock.Verify(t => t.WriteMessageAsync(messageMock.Object, It.IsAny<CancellationToken>()),
@@ -108,7 +109,8 @@ public class MessageServiceTests
 
         // Then
         var exception = await Assert.ThrowsAsync<ConnectionException>(() => messageService.SendMessageAsync(
-                                                                          messageMock.Object, true));
+                                                                          messageMock.Object, true,
+                                                                          TestContext.Current.CancellationToken));
         Assert.IsType<ObjectDisposedException>(exception.InnerException);
     }
 }

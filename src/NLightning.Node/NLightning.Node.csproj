@@ -2,14 +2,9 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <Version>0.0.1</Version>
     <Configurations>Debug;Release;Debug.Native;Debug.Wasm;Release.Native;Release.Wasm</Configurations>
-    <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <LangVersion>default</LangVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(Configuration.Contains('Debug'))">
@@ -22,17 +17,17 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1"/>
-    <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="9.0.5"/>
-    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.5"/>
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.5"/>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.5"/>
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.5"/>
-    <PackageReference Include="Npgsql" Version="9.0.3"/>
+    <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.5"/>
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.5"/>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5"/>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5"/>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.5"/>
+    <PackageReference Include="Npgsql" Version="10.0.2"/>
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1"/>
     <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0"/>
-    <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0"/>
-    <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0"/>
-    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0"/>
+    <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.0"/>
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1"/>
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0"/>
   </ItemGroup>
 

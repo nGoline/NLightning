@@ -26,7 +26,7 @@ public class TlvSerializerTests
         await _tlvSerializer.SerializeAsync(baseTlv, stream);
         stream.Position = 0;
         var buffer = new byte[stream.Length];
-        await stream.ReadExactlyAsync(buffer, 0, (int)stream.Length);
+        await stream.ReadExactlyAsync(buffer, 0, (int)stream.Length, TestContext.Current.CancellationToken);
 
         // Then
         Assert.Equal(expectedBuffer, buffer);
@@ -188,5 +188,4 @@ public class TlvSerializerTests
     //     Assert.Equal(shortChannelIdTlv.ShortChannelId, deserializedTlv.ShortChannelId);
     // }
     //
-
 }

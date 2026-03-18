@@ -35,7 +35,7 @@ public class FeeServiceTests
         ctsField.SetValue(feeService, null);
 
         // Act
-        var result = await feeService.GetFeeRatePerKwAsync();
+        var result = await feeService.GetFeeRatePerKwAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(cachedFeeRate, result);
@@ -65,7 +65,7 @@ public class FeeServiceTests
         Assert.NotNull(ctsField);
         ctsField.SetValue(feeService, null);
         // Act
-        var result = await feeService.GetFeeRatePerKwAsync();
+        var result = await feeService.GetFeeRatePerKwAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(2000, result.Satoshi);

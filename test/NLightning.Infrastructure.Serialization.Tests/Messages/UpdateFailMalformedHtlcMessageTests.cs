@@ -18,6 +18,7 @@ public class UpdateFailMalformedHtlcMessageTests
     }
 
     #region Deserialize
+
     [Fact]
     public async Task Given_ValidStream_When_DeserializeAsync_Then_ReturnsUpdateFailMalformedHtlcMessage()
     {
@@ -26,7 +27,8 @@ public class UpdateFailMalformedHtlcMessageTests
         var expectedId = 0UL;
         var expectedSha256OfOnion = new byte[32];
         ushort expectedFailureCode = 1;
-        var stream = new MemoryStream(Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"));
+        var stream = new MemoryStream(Convert.FromHexString(
+                                          "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"));
 
         // Act
         var message = await _updateFailMalformedHtlcMessageTypeSerializer.DeserializeAsync(stream);
@@ -38,9 +40,11 @@ public class UpdateFailMalformedHtlcMessageTests
         Assert.Equal(expectedFailureCode, message.Payload.FailureCode);
         Assert.Null(message.Extension);
     }
+
     #endregion
 
     #region Serialize
+
     [Fact]
     public async Task Given_ValidPayloadWith_When_SerializeAsync_Then_WritesCorrectDataToStream()
     {
@@ -50,18 +54,21 @@ public class UpdateFailMalformedHtlcMessageTests
         var sha256OfOnion = new byte[32];
         ushort failureCode = 1;
         var message = new UpdateFailMalformedHtlcMessage(new UpdateFailMalformedHtlcPayload(channelId, failureCode, id,
-                                                                                            sha256OfOnion));
+                                                             sha256OfOnion));
         var stream = new MemoryStream();
-        var expectedBytes = Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001");
+        var expectedBytes =
+            Convert.FromHexString(
+                "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001");
 
         // Act
         await _updateFailMalformedHtlcMessageTypeSerializer.SerializeAsync(message, stream);
         stream.Position = 0;
         var result = new byte[stream.Length];
-        _ = await stream.ReadAsync(result);
+        _ = await stream.ReadAsync(result, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedBytes, result);
     }
+
     #endregion
 }

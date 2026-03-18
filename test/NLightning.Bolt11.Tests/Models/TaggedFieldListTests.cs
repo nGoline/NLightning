@@ -1,10 +1,9 @@
-using NLightning.Bolt11.Models.TaggedFields;
-using NLightning.Domain.Protocol.ValueObjects;
-using NLightning.Domain.Utils;
-
 namespace NLightning.Bolt11.Tests.Models;
 
 using Bolt11.Models;
+using Bolt11.Models.TaggedFields;
+using Domain.Protocol.ValueObjects;
+using Domain.Utils;
 using Enums;
 using Interfaces;
 using Mocks;

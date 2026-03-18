@@ -1,6 +1,7 @@
-using NLightning.Domain.Protocol.ValueObjects;
-
 namespace NLightning.Domain.Tests.ValueObjects;
+
+using Domain.Protocol.ValueObjects;
+
 public class ChainHashTests
 {
     [Fact]

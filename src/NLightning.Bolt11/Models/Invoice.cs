@@ -195,7 +195,8 @@ public partial class Invoice
         get
         {
             return _taggedFields
-                      .TryGetAll(TaggedFieldTypes.FallbackAddress, out List<FallbackAddressTaggedField> fallbackAddress)
+                      .TryGetAll(TaggedFieldTypes.FallbackAddress,
+                                 out List<FallbackAddressTaggedField>? fallbackAddress)
                        ? fallbackAddress.Select(x => x.Value).ToList()
                        : null;
         }

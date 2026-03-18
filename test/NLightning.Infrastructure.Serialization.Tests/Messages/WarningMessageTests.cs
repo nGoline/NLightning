@@ -20,7 +20,8 @@ public class WarningMessageTests
     {
         // Arrange
         var expectedPayload = new ErrorPayload("Warning message!");
-        var stream = new MemoryStream(Convert.FromHexString("000000000000000000000000000000000000000000000000000000000000000000105761726E696E67206D65737361676521"));
+        var stream = new MemoryStream(Convert.FromHexString(
+                                          "000000000000000000000000000000000000000000000000000000000000000000105761726E696E67206D65737361676521"));
 
         // Act
         var errorMessage = await _warningMessageTypeSerializer.DeserializeAsync(stream);
@@ -37,13 +38,15 @@ public class WarningMessageTests
         // Arrange
         var message = new WarningMessage(new ErrorPayload("Warning message!"));
         var stream = new MemoryStream();
-        var expectedBytes = Convert.FromHexString("000000000000000000000000000000000000000000000000000000000000000000105761726E696E67206D65737361676521");
+        var expectedBytes =
+            Convert.FromHexString(
+                "000000000000000000000000000000000000000000000000000000000000000000105761726E696E67206D65737361676521");
 
         // Act
         await _warningMessageTypeSerializer.SerializeAsync(message, stream);
         stream.Position = 0;
         var result = new byte[stream.Length];
-        _ = await stream.ReadAsync(result);
+        _ = await stream.ReadAsync(result, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedBytes, result);

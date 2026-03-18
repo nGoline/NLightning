@@ -1,6 +1,7 @@
-using NLightning.Domain.Channels.ValueObjects;
-
 namespace NLightning.Domain.Tests.ValueObjects;
+
+using Domain.Channels.ValueObjects;
+
 public class ChannelIdTests
 {
     [Fact]
@@ -23,7 +24,9 @@ public class ChannelIdTests
     {
         // Given
         var channelId1 = new ChannelId(new byte[32]);
-        var channelId2 = new ChannelId([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+        var channelId2 = new ChannelId([
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+        ]);
 
         // When & Then
         Assert.False(channelId1 == channelId2);

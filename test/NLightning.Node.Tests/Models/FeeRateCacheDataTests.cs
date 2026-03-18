@@ -32,8 +32,12 @@ public class FeeRateCacheDataTests
         };
 
         // When
-        var serializedData = MessagePackSerializer.Serialize(originalData);
-        var deserializedData = MessagePackSerializer.Deserialize<FeeRateCacheData>(serializedData);
+        var serializedData =
+            MessagePackSerializer.Serialize(originalData, cancellationToken: TestContext.Current.CancellationToken);
+        var deserializedData =
+            MessagePackSerializer.Deserialize<FeeRateCacheData>(serializedData,
+                                                                cancellationToken: TestContext.Current
+                                                                   .CancellationToken);
 
         // Then
         Assert.Equal(originalData.FeeRate, deserializedData.FeeRate);

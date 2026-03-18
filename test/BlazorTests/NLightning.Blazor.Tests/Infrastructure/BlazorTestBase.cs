@@ -82,7 +82,7 @@ public class BlazorTestBase : IAsyncLifetime
         _server.RunAsync();
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         // Playwright initialization logic to intercept HTTP requests
         var playwright = await Playwright.CreateAsync();
@@ -102,7 +102,7 @@ public class BlazorTestBase : IAsyncLifetime
                fileName.EndsWith("dat");
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _server.StopAsync();
         Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true });
