@@ -18,7 +18,7 @@ Lightning Network implementations.
 
 ## Documentation
 
-You can check our documentation page [here](https://nlightning.ipms.io/)
+You can check our documentation page [here](https://docs.nlightn.ing/)
 
 ## Features
 
