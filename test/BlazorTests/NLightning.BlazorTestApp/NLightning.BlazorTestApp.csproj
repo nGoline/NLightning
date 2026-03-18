@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Configurations>Release.Wasm;Debug.Wasm</Configurations>
@@ -27,9 +27,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.5"/>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.5" PrivateAssets="all"/>
-    <PackageReference Include="Microsoft.NET.ILLink.Tasks" Version="9.0.5"/>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.5"/>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.5" PrivateAssets="all"/>
+    <PackageReference Include="Microsoft.DotNet.HotReload.WebAssembly.Browser" Version="10.0.201"/>
+    <PackageReference Include="Microsoft.NET.ILLink.Tasks" Version="10.0.5"/>
   </ItemGroup>
 
   <ItemGroup>

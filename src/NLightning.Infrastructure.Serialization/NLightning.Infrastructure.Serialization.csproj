@@ -1,35 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-      <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
-        <LangVersion>latest</LangVersion>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <Configurations>Debug;Release;Debug.Native;Release.Native;Debug.Wasm;Release.Wasm</Configurations>
-        <Platforms>AnyCPU</Platforms>
-    </PropertyGroup>
+  <PropertyGroup>
+    <Configurations>Debug;Release;Debug.Native;Release.Native;Debug.Wasm;Release.Wasm</Configurations>
+  </PropertyGroup>
 
-    <PropertyGroup Condition=" '$(Configuration)' == 'Debug.Native' ">
-      <DebugSymbols Condition=" '$(DebugSymbols)' == '' ">true</DebugSymbols>
-      <Optimize Condition=" '$(Optimize)' == '' ">false</Optimize>
-    </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug.Native' ">
+    <DebugSymbols Condition=" '$(DebugSymbols)' == '' ">true</DebugSymbols>
+    <Optimize Condition=" '$(Optimize)' == '' ">false</Optimize>
+  </PropertyGroup>
 
-    <PropertyGroup Condition=" '$(Configuration)' == 'Release.Native' ">
-      <Optimize Condition=" '$(Optimize)' == '' ">true</Optimize>
-    </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release.Native' ">
+    <Optimize Condition=" '$(Optimize)' == '' ">true</Optimize>
+  </PropertyGroup>
 
-    <PropertyGroup Condition=" '$(Configuration)' == 'Debug.Wasm' ">
-      <DebugSymbols Condition=" '$(DebugSymbols)' == '' ">true</DebugSymbols>
-      <Optimize Condition=" '$(Optimize)' == '' ">false</Optimize>
-    </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug.Wasm' ">
+    <DebugSymbols Condition=" '$(DebugSymbols)' == '' ">true</DebugSymbols>
+    <Optimize Condition=" '$(Optimize)' == '' ">false</Optimize>
+  </PropertyGroup>
 
-    <PropertyGroup Condition=" '$(Configuration)' == 'Release.Wasm' ">
-      <Optimize Condition=" '$(Optimize)' == '' ">true</Optimize>
-    </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release.Wasm' ">
+    <Optimize Condition=" '$(Optimize)' == '' ">true</Optimize>
+  </PropertyGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\NLightning.Domain\NLightning.Domain.csproj" />
-      <ProjectReference Include="..\NLightning.Infrastructure\NLightning.Infrastructure.csproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NLightning.Domain\NLightning.Domain.csproj"/>
+    <ProjectReference Include="..\NLightning.Infrastructure\NLightning.Infrastructure.csproj"/>
+  </ItemGroup>
 
 </Project>

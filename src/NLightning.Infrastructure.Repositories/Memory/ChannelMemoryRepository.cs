@@ -77,9 +77,6 @@ public class ChannelMemoryRepository : IChannelMemoryRepository
 
     public void AddTemporaryChannel(CompactPubKey compactPubKey, ChannelModel channel)
     {
-        ArgumentNullException.ThrowIfNull(compactPubKey);
-        ArgumentNullException.ThrowIfNull(channel.ChannelId);
-
         if (!_temporaryChannels.TryAdd((compactPubKey, channel.ChannelId), channel))
             throw new InvalidOperationException(
                 $"Temporary channel with Id {channel.ChannelId} for CompactPubKey {compactPubKey} already exists.");
@@ -89,9 +86,6 @@ public class ChannelMemoryRepository : IChannelMemoryRepository
 
     public void UpdateTemporaryChannel(CompactPubKey compactPubKey, ChannelModel channel)
     {
-        ArgumentNullException.ThrowIfNull(compactPubKey);
-        ArgumentNullException.ThrowIfNull(channel.ChannelId);
-
         if (!_temporaryChannels.ContainsKey((compactPubKey, channel.ChannelId)))
             throw new KeyNotFoundException(
                 $"Temporary channel with Id {channel.ChannelId} for CompactPubKey {compactPubKey} does not exist.");
@@ -102,9 +96,6 @@ public class ChannelMemoryRepository : IChannelMemoryRepository
 
     public void RemoveTemporaryChannel(CompactPubKey compactPubKey, ChannelId channelId)
     {
-        ArgumentNullException.ThrowIfNull(compactPubKey);
-        ArgumentNullException.ThrowIfNull(channelId);
-
         if (!_temporaryChannels.TryRemove((compactPubKey, channelId), out _))
             throw new KeyNotFoundException(
                 $"Temporary channel with Id {channelId} for CompactPubKey {compactPubKey} does not exist.");

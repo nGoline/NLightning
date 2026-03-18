@@ -1,11 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\NLightning.Domain\NLightning.Domain.csproj"/>
     <ProjectReference Include="..\NLightning.Infrastructure.Persistence\NLightning.Infrastructure.Persistence.csproj"/>

@@ -1,6 +1,7 @@
-using NLightning.Domain.Protocol.ValueObjects;
-
 namespace NLightning.Domain.Tests.ValueObjects;
+
+using Domain.Protocol.ValueObjects;
+
 public class BigSizeTests
 {
     [Theory]
@@ -47,11 +48,13 @@ public class BigSizeTests
                 break;
             case not null when type == typeof(ushort):
                 var ushortException = Assert.Throws<OverflowException>(() => (ushort)bigSize);
-                Assert.Equal($"Cannot convert {bigSize.Value} to ushort because it's too large.", ushortException.Message);
+                Assert.Equal($"Cannot convert {bigSize.Value} to ushort because it's too large.",
+                             ushortException.Message);
                 break;
             case not null when type == typeof(short):
                 var shortException = Assert.Throws<OverflowException>(() => (short)bigSize);
-                Assert.Equal($"Cannot convert {bigSize.Value} to short because it's too large.", shortException.Message);
+                Assert.Equal($"Cannot convert {bigSize.Value} to short because it's too large.",
+                             shortException.Message);
                 break;
             case not null when type == typeof(byte):
                 var byteException = Assert.Throws<OverflowException>(() => (byte)bigSize);
@@ -220,7 +223,8 @@ public class BigSizeTests
     [InlineData(0, 1, false)]
     [InlineData(1, 0, true)]
     [InlineData(1, 1, true)]
-    public void Given_BigSize_When_CompareGreaterThanOrEqual_Then_ResultIsKnown(ulong value1, ulong value2, bool expected)
+    public void Given_BigSize_When_CompareGreaterThanOrEqual_Then_ResultIsKnown(
+        ulong value1, ulong value2, bool expected)
     {
         // Arrange
         var bigSize1 = new BigSize(value1);

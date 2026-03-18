@@ -1,13 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <BaseOutputPath>..\NLightning.Models\bin\</BaseOutputPath>
     <Configurations>Debug;Release;Debug.Native;Debug.Wasm;Release.Native;Release.Wasm</Configurations>
-    <Platforms>AnyCPU</Platforms>
-
     <BaseOutputPath>..\NLightning.Infrastructure.Persistence\bin\</BaseOutputPath>
   </PropertyGroup>
 
@@ -20,13 +14,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.12"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.12"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.12">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.5"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.3"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.5"/>
   </ItemGroup>
 
   <ItemGroup>

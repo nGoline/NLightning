@@ -1,8 +1,7 @@
-using NLightning.Domain.Utils;
-
 namespace NLightning.Bolt11.Tests.Models.TaggedFields;
 
 using Bolt11.Models.TaggedFields;
+using Domain.Utils;
 using Enums;
 
 public class MetadataTaggedFieldTests

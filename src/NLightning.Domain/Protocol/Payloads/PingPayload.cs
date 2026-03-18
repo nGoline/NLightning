@@ -36,7 +36,7 @@ public class PingPayload : IMessagePayload
     public PingPayload()
     {
         var randomGenerator = new Random();
-        // Get number of bytes at random between HashConstants.SHA256_HASH_LEN and ushort.MaxValue
+        // Get the number of bytes at random between HashConstants.SHA256_HASH_LEN and ushort.MaxValue
         NumPongBytes = (ushort)randomGenerator.Next(byte.MaxValue, MaxLength);
         BytesLength = (ushort)randomGenerator.Next(CryptoConstants.Sha256HashLen, 4 * CryptoConstants.Sha256HashLen);
 

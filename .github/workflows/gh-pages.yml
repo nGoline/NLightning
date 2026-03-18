@@ -27,31 +27,31 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-    - name: Dotnet Setup
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 9.0.x
-        
-    - name: Download Coverage Reports
-      uses: dawidd6/action-download-artifact@v3
-      continue-on-error: true # Allow the docs to build even if there are no coverage reports
-      with:
-        workflow: combined-report.yml
-        name: coverage-docfx
-        path: .docfx/docs/coverage-reports/
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Dotnet Setup
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
 
-    - run: dotnet tool update -g docfx
-    - run: docfx .docfx/docfx.json
+      - name: Download Coverage Reports
+        uses: dawidd6/action-download-artifact@v3
+        continue-on-error: true # Allow the docs to build even if there are no coverage reports
+        with:
+          workflow: combined-report.yml
+          name: coverage-docfx
+          path: .docfx/docs/coverage-reports/
 
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        # Upload entire repository
-        path: '.docfx/_site'
-        
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+      - run: dotnet tool update -g docfx
+      - run: docfx .docfx/docfx.json
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload entire repository
+          path: '.docfx/_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
   

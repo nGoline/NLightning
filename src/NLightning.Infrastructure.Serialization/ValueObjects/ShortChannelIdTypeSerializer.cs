@@ -1,9 +1,11 @@
 using System.Buffers;
-using NLightning.Domain.Channels.ValueObjects;
-using NLightning.Domain.Interfaces;
-using NLightning.Domain.Serialization.Interfaces;
 
 namespace NLightning.Infrastructure.Serialization.ValueObjects;
+
+using Domain.Channels.ValueObjects;
+using Domain.Interfaces;
+using Domain.Serialization.Interfaces;
+
 public class ShortChannelIdTypeSerializer : IValueObjectTypeSerializer<ShortChannelId>
 {
     /// <summary>
@@ -44,6 +46,7 @@ public class ShortChannelIdTypeSerializer : IValueObjectTypeSerializer<ShortChan
             ArrayPool<byte>.Shared.Return(buffer);
         }
     }
+
     async Task<IValueObject> IValueObjectTypeSerializer.DeserializeAsync(Stream stream)
     {
         return await DeserializeAsync(stream);

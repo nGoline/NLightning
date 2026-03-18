@@ -1,9 +1,8 @@
-using NLightning.Domain.Utils;
-
 namespace NLightning.Bolt11.Tests.Models.TaggedFields;
 
 using Bolt11.Models.TaggedFields;
 using Domain.Node;
+using Domain.Utils;
 using Enums;
 
 public class FeaturesTaggedFieldTests
@@ -33,7 +32,8 @@ public class FeaturesTaggedFieldTests
     [Theory]
     [InlineData(new byte[] { 9, 15 }, new byte[] { 0x82, 0x00 })]
     [InlineData(new byte[] { 8, 14, 48 }, new byte[] { 0x40, 0x00, 0x00, 0x00, 0x10, 0x40, 0x00 })]
-    [InlineData(new byte[] { 8, 14, 99 }, new byte[] { 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x10, 0x00 })]
+    [InlineData(new byte[] { 8, 14, 99 },
+                new byte[] { 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x10, 0x00 })]
     public void WriteToBitWriter_WritesCorrectData(byte[] featureBits, byte[] expectedData)
     {
         // Arrange
@@ -42,6 +42,7 @@ public class FeaturesTaggedFieldTests
         {
             features.SetFeature(featureBit, true);
         }
+
         var taggedField = new FeaturesTaggedField(features);
         var bitWriter = new BitWriter(taggedField.Length * 5);
 
@@ -57,7 +58,8 @@ public class FeaturesTaggedFieldTests
     [Theory]
     [InlineData(new byte[] { 9, 15 }, 3, new byte[] { 0x82, 0x00 })]
     [InlineData(new byte[] { 8, 14, 48 }, 10, new byte[] { 0x40, 0x00, 0x00, 0x00, 0x10, 0x40, 0x00 })]
-    [InlineData(new byte[] { 8, 14, 99 }, 20, new byte[] { 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x10, 0x00 })]
+    [InlineData(new byte[] { 8, 14, 99 }, 20,
+                new byte[] { 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x10, 0x00 })]
     public void FromBitReader_CreatesCorrectlyFromBitReader(byte[] featureBits, short bitLength, byte[] bytes)
     {
         // Arrange

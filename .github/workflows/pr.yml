@@ -13,11 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
 
       - name: Build
         run: dotnet build --configuration Release -p:MSBuildWarningsAsMessages=MSB4121
@@ -38,7 +38,7 @@ jobs:
           title: "Code Coverage"
           tag: "${{ github.run_number }}_${{ github.run_id }}"
           toolpath: "reportgeneratortool"
-          
+
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2.16.1
         if: always()

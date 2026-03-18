@@ -11,6 +11,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NLightning.Node", "src\NLightning.Node\NLightning.Node.csproj", "{A103C727-E983-4510-81FB-301625DC1A7F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{AF4411D4-8EE9-423E-8213-1C9D35E47882}"
+	ProjectSection(SolutionItems) = preProject
+		src\Directory.Build.props = src\Directory.Build.props
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NLightning.Infrastructure.Persistence", "src\NLightning.Infrastructure.Persistence\NLightning.Infrastructure.Persistence.csproj", "{2EBE72E4-F20D-4668-B2A5-F7DCDECA0832}"
 EndProject
@@ -25,6 +28,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NLightning.BlazorTestApp", "test\BlazorTests\NLightning.BlazorTestApp\NLightning.BlazorTestApp.csproj", "{99E240CC-6381-40DF-B784-528D2EDBBDFC}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlazorTests", "BlazorTests", "{6F76E9AF-7E6D-42D8-918A-4C5B26BE07C1}"
+	ProjectSection(SolutionItems) = preProject
+		src\Directory.Build.props = src\Directory.Build.props
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NLightning.Blazor.Tests", "test\BlazorTests\NLightning.Blazor.Tests\NLightning.Blazor.Tests.csproj", "{C0F21413-47D0-4584-84A5-B730909E7349}"
 EndProject
