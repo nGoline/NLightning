@@ -11,9 +11,10 @@ The reason behind this is that for a Blazor app running fully on the browser we 
 
 ## Sample
 
-A sample project using this project in a Blazor WebAssembly environment can be found [here](https://github.com/ipms-io/NLightning-Samples/tree/main/Bolt11.Decoder.Blazor).
+A sample project using this project in a Blazor WebAssembly environment can be
+found [here](https://github.com/ngoline/NLightning-Samples/tree/main/Bolt11.Decoder.Blazor).
 
-A live version of the sample can be found at [bolt11.ipms.io](https://bolt11.ipms.io)
+A live version of the sample can be found at [bolt11.nlightn.ing](https://bolt11.nlightn.ing)
 
 ## Usage
 
@@ -45,12 +46,12 @@ Console.WriteLine("Here's a few props from the invoice:")
 Console.WriteLine(invoice.Amount.MilliSatoshi);
 Console.WriteLine(invoice.Amount.Satoshi);
 Console.WriteLine(invoice.PaymentHash);
-Console.WriteLine("A list with all the props can be found at: https://nlightning.ipms.io/api/NLightning.Bolts.BOLT11.Invoice.html#properties");
+Console.WriteLine("A list with all the props can be found at: https://docs.nlightn.ing/api/NLightning.Bolts.BOLT11.Invoice.html#properties");
 ```
 
 ### Decoding in Blazor Apps
 
-Blazor apps need to initialize the CryptoProvider in order to load the needed js files. Add the following to your
+Blazor apps need to initialize the CryptoProvider to load the necessary js files. Add the following to your
 `Program.cs` file.
 
 #### Initialize the CryptoProvider (libsodium.js)
