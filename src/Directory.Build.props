@@ -6,7 +6,21 @@
         <Nullable>enable</Nullable>
         <Platforms>AnyCPU</Platforms>
         <Deterministic>true</Deterministic>
-        <IsPackable>false</IsPackable>
-        <IsTestProject>true</IsTestProject>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    </PropertyGroup>
+
+    <!--Package props-->
+    <PropertyGroup>
+        <Authors>Nickolas Goline</Authors>
+        <Copyright>Copyright © Níckolas Goline 2024-2026</Copyright>
+        <RepositoryUrl>https://github.com/ngoline/nlightning</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <NeutralLanguage>en</NeutralLanguage>
+        <Icon>logo.png</Icon>
+        <PackageIcon>logo.png</PackageIcon>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 </Project>

@@ -24,7 +24,9 @@ public class UpdateFeeMessageTests
         var expectedChannelId = ChannelId.Zero;
         var expectedFeeratePerKw = 10U;
 
-        var stream = new MemoryStream(Convert.FromHexString("00000000000000000000000000000000000000000000000000000000000000000000000A"));
+        var stream =
+            new MemoryStream(
+                Convert.FromHexString("00000000000000000000000000000000000000000000000000000000000000000000000A"));
 
         // Act
         var message = await _updateFeeMessageTypeSerializer.DeserializeAsync(stream);
@@ -43,13 +45,14 @@ public class UpdateFeeMessageTests
         var feeratePerKw = 10U;
         var message = new UpdateFeeMessage(new UpdateFeePayload(channelId, feeratePerKw));
         var stream = new MemoryStream();
-        var expectedBytes = Convert.FromHexString("00000000000000000000000000000000000000000000000000000000000000000000000A");
+        var expectedBytes =
+            Convert.FromHexString("00000000000000000000000000000000000000000000000000000000000000000000000A");
 
         // Act
         await _updateFeeMessageTypeSerializer.SerializeAsync(message, stream);
         stream.Position = 0;
         var result = new byte[stream.Length];
-        _ = await stream.ReadAsync(result);
+        _ = await stream.ReadAsync(result, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedBytes, result);

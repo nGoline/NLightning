@@ -1,9 +1,9 @@
 #!/bin/bash
 
 echo "Building projects first..."
-dotnet build ../NLightning.Infrastructure.Persistence.Postgres --framework
-dotnet build ../NLightning.Infrastructure.Persistence.Sqlite --framework
-dotnet build ../NLightning.Infrastructure.Persistence.SqlServer --framework
+dotnet build ../NLightning.Infrastructure.Persistence.Postgres
+dotnet build ../NLightning.Infrastructure.Persistence.Sqlite
+dotnet build ../NLightning.Infrastructure.Persistence.SqlServer
 
 echo "Postgres"
 export NLIGHTNING_POSTGRES=${NLIGHTNING_POSTGRES:-'User ID=superuser;Password=superuser;Server=localhost;Port=15432;Database=nlightning;'}

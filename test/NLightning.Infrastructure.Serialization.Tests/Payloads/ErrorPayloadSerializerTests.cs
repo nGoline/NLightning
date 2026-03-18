@@ -23,7 +23,7 @@ public class ErrorPayloadSerializerTests
         // Then
         memoryStream.Seek(0, SeekOrigin.Begin);
         var expectedLengthBytes = new byte[2];
-        _ = await memoryStream.ReadAsync(expectedLengthBytes.AsMemory(0, 2));
+        _ = await memoryStream.ReadAsync(expectedLengthBytes.AsMemory(0, 2), TestContext.Current.CancellationToken);
 
         Assert.Equal(0, EndianBitConverter.ToUInt16BigEndian(expectedLengthBytes));
     }

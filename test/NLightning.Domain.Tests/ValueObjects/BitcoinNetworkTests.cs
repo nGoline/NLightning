@@ -131,10 +131,10 @@ public class BitcoinNetworkTests
     [Fact]
     public void Unregistered_CustomNetwork_Throws()
     {
-        var net = new BitcoinNetwork("mycustomnet");
+        var net = new BitcoinNetwork("myinvelidnet");
         Assert.Throws<InvalidOperationException>(() =>
         {
-            var _ = net.ChainHash;
+            _ = net.ChainHash;
         });
     }
 

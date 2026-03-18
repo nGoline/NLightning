@@ -196,7 +196,7 @@ public class PeerManagerTests
 #pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         // Wait a bit for the async continuation to complete
-        await Task.Delay(50);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
 
         // Then
         _mockPeerServiceFactory.Verify(f => f.CreateConnectingPeerAsync(mockTcpClient.Object), Times.Once);
@@ -302,7 +302,7 @@ public class PeerManagerTests
         handlePeerChannelMessageMethod!.Invoke(peerManager, [null!, eventArgs]);
 
         // Wait a bit for the async continuation to complete
-        await Task.Delay(50);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
 
         // Then
         _mockPeerService.Verify(p => p.SendMessageAsync(_mockResponseMessage.Object), Times.Once);
@@ -335,7 +335,7 @@ public class PeerManagerTests
         handlePeerChannelMessageMethod!.Invoke(peerManager, [null!, eventArgs]);
 
         // Wait a bit for the async continuation to complete
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         // Then
         _mockPeerService.Verify(p => p.Disconnect(), Times.Once);
@@ -376,7 +376,7 @@ public class PeerManagerTests
         handlePeerChannelMessageMethod!.Invoke(peerManager, [null!, eventArgs]);
 
         // Wait a bit for the async continuation to complete
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         // Then
         _mockPeerService.Verify(p => p.Disconnect(), Times.Never);
@@ -464,7 +464,7 @@ public class PeerManagerTests
 #pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         // Wait for the async continuation to complete
-        await Task.Delay(50);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
 
         // Then
         _mockLogger.Verify(

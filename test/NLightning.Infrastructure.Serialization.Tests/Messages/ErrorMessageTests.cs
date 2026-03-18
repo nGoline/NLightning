@@ -25,7 +25,8 @@ public class ErrorMessageTests
         var expectedChannelId = ChannelId.Zero;
         var errorMessage = "Error message!";
         var expectedData = Encoding.UTF8.GetBytes(errorMessage);
-        var stream = new MemoryStream(Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000000E4572726F72206D65737361676521"));
+        var stream = new MemoryStream(Convert.FromHexString(
+                                          "0000000000000000000000000000000000000000000000000000000000000000000E4572726F72206D65737361676521"));
 
         // Act
         var message = await _errorMessageTypeSerializer.DeserializeAsync(stream);
@@ -42,13 +43,15 @@ public class ErrorMessageTests
         // Arrange
         var message = new ErrorMessage(new ErrorPayload("Error message!"));
         var stream = new MemoryStream();
-        var expectedBytes = Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000000E4572726F72206D65737361676521");
+        var expectedBytes =
+            Convert.FromHexString(
+                "0000000000000000000000000000000000000000000000000000000000000000000E4572726F72206D65737361676521");
 
         // Act
         await _errorMessageTypeSerializer.SerializeAsync(message, stream);
         stream.Position = 0;
         var result = new byte[stream.Length];
-        _ = await stream.ReadAsync(result);
+        _ = await stream.ReadAsync(result, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedBytes, result);

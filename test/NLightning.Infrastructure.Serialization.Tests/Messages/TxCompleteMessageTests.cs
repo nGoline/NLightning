@@ -22,7 +22,8 @@ public class TxCompleteMessageTests
     {
         // Arrange
         var expectedChannelId = ChannelId.Zero;
-        var stream = new MemoryStream(Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000"));
+        var stream =
+            new MemoryStream(Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000"));
 
         // Act
         var message = await _txCompleteMessageTypeSerializer.DeserializeAsync(stream);
@@ -45,7 +46,7 @@ public class TxCompleteMessageTests
         await _txCompleteMessageTypeSerializer.SerializeAsync(message, stream);
         stream.Position = 0;
         var result = new byte[stream.Length];
-        _ = await stream.ReadAsync(result);
+        _ = await stream.ReadAsync(result, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(expectedBytes, result);

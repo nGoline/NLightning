@@ -78,8 +78,9 @@ public class TransportServiceTests
 
                 buffer = new byte[66];
                 await stream.ReadExactlyAsync(buffer);
-            });
-            await tcpClient1.ConnectAsync(IPEndPoint.Parse(tcpListener.LocalEndpoint.ToEndpointString()));
+            }, TestContext.Current.CancellationToken);
+            await tcpClient1.ConnectAsync(IPEndPoint.Parse(tcpListener.LocalEndpoint.ToEndpointString()),
+                                          TestContext.Current.CancellationToken);
             var transportService = new TransportService(_mockLogger.Object, messageSerializerMock.Object,
                                                         TimeSpan.FromSeconds(30), handshakeServiceMock.Object,
                                                         tcpClient1);
@@ -160,8 +161,9 @@ public class TransportServiceTests
                 await stream.ReadExactlyAsync(buffer);
 
                 await stream.WriteAsync(buffer);
-            });
-            await tcpClient1.ConnectAsync(IPEndPoint.Parse(tcpListener.LocalEndpoint.ToEndpointString()));
+            }, TestContext.Current.CancellationToken);
+            await tcpClient1.ConnectAsync(IPEndPoint.Parse(tcpListener.LocalEndpoint.ToEndpointString()),
+                                          TestContext.Current.CancellationToken);
             var transportService = new TransportService(_mockLogger.Object, messageSerializerMock.Object, TimeSpan.Zero,
                                                         handshakeServiceMock.Object, tcpClient1);
 

@@ -8,7 +8,6 @@
     <Platforms>AnyCPU</Platforms>
     <Deterministic>true</Deterministic>
     <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
     <Version>0.0.1</Version>
     <Configurations>Debug;Release;Debug.Native;Release.Native</Configurations>
   </PropertyGroup>
@@ -34,7 +33,6 @@
   <ItemGroup>
     <PackageReference Include="Docker.DotNet" Version="3.125.15"/>
     <PackageReference Include="LNUnit" Version="3.0.4"/>
-    <PackageReference Include="xunit.extensibility.core" Version="2.9.3"/>
   </ItemGroup>
 
   <ItemGroup>
