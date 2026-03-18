@@ -80,7 +80,7 @@ public class CommitmentTransactionModelFactory : ICommitmentTransactionModelFact
         // Calculate base weight
         var weight = WeightConstants.TransactionBaseWeight
                    + TransactionConstants.CommitmentTransactionInputWeight
-                     // + htlcs.Count * WeightConstants.HtlcOutputWeight
+                   // + htlcs.Count * WeightConstants.HtlcOutputWeight
                    + WeightConstants.P2WshOutputWeight; // To Local Output
 
         // Set initial amounts for to_local and to_remote outputs

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq.Protected;
 using NBitcoin;
+using NLightning.Application;
 using NLightning.Daemon.Handlers;
 using NLightning.Daemon.Interfaces;
 using NLightning.Domain.Bitcoin.Events;
@@ -26,28 +27,26 @@ using NLightning.Domain.Node.ValueObjects;
 using NLightning.Domain.Protocol.Constants;
 using NLightning.Domain.Protocol.Interfaces;
 using NLightning.Domain.Protocol.ValueObjects;
+using NLightning.Infrastructure;
+using NLightning.Infrastructure.Bitcoin;
 using NLightning.Infrastructure.Bitcoin.Builders;
 using NLightning.Infrastructure.Bitcoin.Options;
 using NLightning.Infrastructure.Bitcoin.Services;
 using NLightning.Infrastructure.Bitcoin.Signers;
+using NLightning.Infrastructure.Bitcoin.Wallet.Interfaces;
+using NLightning.Infrastructure.Persistence;
 using NLightning.Infrastructure.Persistence.Contexts;
-using NLightning.Integration.Tests.Docker.Mock;
-using NLightning.Integration.Tests.Docker.Utils;
+using NLightning.Infrastructure.Repositories;
+using NLightning.Infrastructure.Serialization;
 using NLightning.Tests.Utils;
 using ServiceStack;
-using Xunit.Abstractions;
 
-namespace NLightning.Integration.Tests.Channels;
+namespace NLightning.Integration.Tests.Docker;
 
-using Application;
 using Fixtures;
-using Infrastructure;
-using Infrastructure.Bitcoin;
-using Infrastructure.Bitcoin.Wallet.Interfaces;
-using Infrastructure.Persistence;
-using Infrastructure.Repositories;
-using Infrastructure.Serialization;
+using Mock;
 using TestCollections;
+using Utils;
 
 [Collection(LightningRegtestNetworkFixtureCollection.Name)]
 public class ChannelOpeningFlowTests : IDisposable
@@ -59,12 +58,10 @@ public class ChannelOpeningFlowTests : IDisposable
     private readonly int _port;
     private readonly string _databaseFilePath = $"nlightning_channel_test_{Guid.NewGuid()}.db";
     private readonly IServiceProvider _serviceProvider;
-    private readonly ITestOutputHelper _output;
 
     public ChannelOpeningFlowTests(LightningRegtestNetworkFixture fixture, ITestOutputHelper output)
     {
         _lightningRegtestNetworkFixture = fixture;
-        _output = output;
         Console.SetOut(new TestOutputWriter(output));
 
         _port = PortPoolUtil.GetAvailablePortAsync().GetAwaiter().GetResult();
@@ -202,7 +199,7 @@ public class ChannelOpeningFlowTests : IDisposable
         await _peerManager.StartAsync(CancellationToken.None);
 
         // Get the current block height
-        var currentHeight = (uint)await bitcoin.GetBlockCountAsync();
+        var currentHeight = (uint)await bitcoin.GetBlockCountAsync(TestContext.Current.CancellationToken);
 
         // Start the blockchain monitor at the current height
         await _blockchainMonitor.StartAsync(currentHeight, CancellationToken.None);
@@ -242,12 +239,13 @@ public class ChannelOpeningFlowTests : IDisposable
             _blockchainMonitor.OnNewBlockDetected += OnNewBlockDetected;
 
             // Send funds to our wallet
-            await bitcoin.SendToAddressAsync(
-                BitcoinAddress.Create(address.Address, NBitcoin.Network.RegTest),
-                new Money(1, MoneyUnit.BTC));
+            await bitcoin.SendToAddressAsync(BitcoinAddress.Create(address.Address, NBitcoin.Network.RegTest),
+                                             new Money(1, MoneyUnit.BTC), TestContext.Current.CancellationToken);
 
             // Mine blocks to confirm
-            await bitcoin.GenerateToAddressAsync(6, await bitcoin.GetNewAddressAsync());
+            await bitcoin.GenerateToAddressAsync(
+                6, await bitcoin.GetNewAddressAsync(TestContext.Current.CancellationToken),
+                TestContext.Current.CancellationToken);
 
             // wait for funding transaction to be confirmed
             Assert.True(await tsc.Task);
@@ -263,7 +261,9 @@ public class ChannelOpeningFlowTests : IDisposable
         // Connect to Alice
         var aliceHost = new IPEndPoint((await Dns.GetHostAddressesAsync(alice.Host
                                                                              .SplitOnFirst("//")[1]
-                                                                             .SplitOnFirst(":")[0])).First(), 9735);
+                                                                             .SplitOnFirst(":")[0],
+                                                                        TestContext.Current.CancellationToken)).First(),
+                                       9735);
         var aliceAddress = $"{Convert.ToHexString(alice.LocalNodePubKeyBytes)}@{aliceHost}";
 
         await _peerManager.ConnectToPeerAsync(new PeerAddressInfo(aliceAddress));
@@ -318,7 +318,7 @@ public class ChannelOpeningFlowTests : IDisposable
         await _peerManager.StartAsync(CancellationToken.None);
 
         // Get the current block height
-        var currentHeight = (uint)await bitcoin.GetBlockCountAsync();
+        var currentHeight = (uint)await bitcoin.GetBlockCountAsync(TestContext.Current.CancellationToken);
 
         // Start the blockchain monitor at the current height
         await _blockchainMonitor.StartAsync(currentHeight, CancellationToken.None);
@@ -359,15 +359,17 @@ public class ChannelOpeningFlowTests : IDisposable
             _blockchainMonitor.OnNewBlockDetected += OnNewBlockDetected;
 
             // Send funds to our wallet
-            await bitcoin.SendToAddressAsync(
-                BitcoinAddress.Create(address1.Address, NBitcoin.Network.RegTest),
-                new Money(1100000, MoneyUnit.Satoshi)); // 0.011
-            await bitcoin.SendToAddressAsync(
-                BitcoinAddress.Create(address2.Address, NBitcoin.Network.RegTest),
-                new Money(1100000, MoneyUnit.Satoshi)); // 0.011
+            await bitcoin.SendToAddressAsync(BitcoinAddress.Create(address1.Address, NBitcoin.Network.RegTest),
+                                             new Money(1100000, MoneyUnit.Satoshi),
+                                             TestContext.Current.CancellationToken); // 0.011
+            await bitcoin.SendToAddressAsync(BitcoinAddress.Create(address2.Address, NBitcoin.Network.RegTest),
+                                             new Money(1100000, MoneyUnit.Satoshi),
+                                             TestContext.Current.CancellationToken); // 0.011
 
             // Mine blocks to confirm
-            await bitcoin.GenerateToAddressAsync(6, await bitcoin.GetNewAddressAsync());
+            await bitcoin.GenerateToAddressAsync(
+                6, await bitcoin.GetNewAddressAsync(TestContext.Current.CancellationToken),
+                TestContext.Current.CancellationToken);
 
             // wait for funding transaction to be confirmed
             Assert.True(await tsc.Task);
@@ -383,7 +385,9 @@ public class ChannelOpeningFlowTests : IDisposable
         // Connect to Alice
         var aliceHost = new IPEndPoint((await Dns.GetHostAddressesAsync(alice.Host
                                                                              .SplitOnFirst("//")[1]
-                                                                             .SplitOnFirst(":")[0])).First(), 9735);
+                                                                             .SplitOnFirst(":")[0],
+                                                                        TestContext.Current.CancellationToken)).First(),
+                                       9735);
         var aliceAddress = $"{Convert.ToHexString(alice.LocalNodePubKeyBytes)}@{aliceHost}";
 
         await _peerManager.ConnectToPeerAsync(new PeerAddressInfo(aliceAddress));
@@ -438,7 +442,7 @@ public class ChannelOpeningFlowTests : IDisposable
         await _peerManager.StartAsync(CancellationToken.None);
 
         // Get the current block height
-        var currentHeight = (uint)await bitcoin.GetBlockCountAsync();
+        var currentHeight = (uint)await bitcoin.GetBlockCountAsync(TestContext.Current.CancellationToken);
 
         // Start the blockchain monitor at the current height
         await _blockchainMonitor.StartAsync(currentHeight, CancellationToken.None);
@@ -478,12 +482,13 @@ public class ChannelOpeningFlowTests : IDisposable
             _blockchainMonitor.OnNewBlockDetected += OnNewBlockDetected;
 
             // Send funds to our wallet
-            await bitcoin.SendToAddressAsync(
-                BitcoinAddress.Create(address.Address, NBitcoin.Network.RegTest),
-                new Money(1, MoneyUnit.BTC));
+            await bitcoin.SendToAddressAsync(BitcoinAddress.Create(address.Address, NBitcoin.Network.RegTest),
+                                             new Money(1, MoneyUnit.BTC), TestContext.Current.CancellationToken);
 
             // Mine blocks to confirm
-            await bitcoin.GenerateToAddressAsync(6, await bitcoin.GetNewAddressAsync());
+            await bitcoin.GenerateToAddressAsync(
+                6, await bitcoin.GetNewAddressAsync(TestContext.Current.CancellationToken),
+                TestContext.Current.CancellationToken);
 
             // wait for funding transaction to be confirmed
             Assert.True(await tsc.Task);
@@ -499,7 +504,9 @@ public class ChannelOpeningFlowTests : IDisposable
         // Connect to Alice
         var aliceHost = new IPEndPoint((await Dns.GetHostAddressesAsync(alice.Host
                                                                              .SplitOnFirst("//")[1]
-                                                                             .SplitOnFirst(":")[0])).First(), 9735);
+                                                                             .SplitOnFirst(":")[0],
+                                                                        TestContext.Current.CancellationToken)).First(),
+                                       9735);
         var aliceAddress = $"{Convert.ToHexString(alice.LocalNodePubKeyBytes)}@{aliceHost}";
 
         await _peerManager.ConnectToPeerAsync(new PeerAddressInfo(aliceAddress));
@@ -554,7 +561,7 @@ public class ChannelOpeningFlowTests : IDisposable
         await _peerManager.StartAsync(CancellationToken.None);
 
         // Get the current block height
-        var currentHeight = (uint)await bitcoin.GetBlockCountAsync();
+        var currentHeight = (uint)await bitcoin.GetBlockCountAsync(TestContext.Current.CancellationToken);
 
         // Start the blockchain monitor at the current height
         await _blockchainMonitor.StartAsync(currentHeight, CancellationToken.None);
@@ -595,15 +602,17 @@ public class ChannelOpeningFlowTests : IDisposable
             _blockchainMonitor.OnNewBlockDetected += OnNewBlockDetected;
 
             // Send funds to our wallet
-            await bitcoin.SendToAddressAsync(
-                BitcoinAddress.Create(address1.Address, NBitcoin.Network.RegTest),
-                new Money(1100000, MoneyUnit.Satoshi)); // 0.011
-            await bitcoin.SendToAddressAsync(
-                BitcoinAddress.Create(address2.Address, NBitcoin.Network.RegTest),
-                new Money(1100000, MoneyUnit.Satoshi)); // 0.011
+            await bitcoin.SendToAddressAsync(BitcoinAddress.Create(address1.Address, NBitcoin.Network.RegTest),
+                                             new Money(1100000, MoneyUnit.Satoshi),
+                                             TestContext.Current.CancellationToken); // 0.011
+            await bitcoin.SendToAddressAsync(BitcoinAddress.Create(address2.Address, NBitcoin.Network.RegTest),
+                                             new Money(1100000, MoneyUnit.Satoshi),
+                                             TestContext.Current.CancellationToken); // 0.011
 
             // Mine blocks to confirm
-            await bitcoin.GenerateToAddressAsync(6, await bitcoin.GetNewAddressAsync());
+            await bitcoin.GenerateToAddressAsync(
+                6, await bitcoin.GetNewAddressAsync(TestContext.Current.CancellationToken),
+                TestContext.Current.CancellationToken);
 
             // wait for funding transaction to be confirmed
             Assert.True(await tsc.Task);
@@ -619,7 +628,9 @@ public class ChannelOpeningFlowTests : IDisposable
         // Connect to Alice
         var aliceHost = new IPEndPoint((await Dns.GetHostAddressesAsync(alice.Host
                                                                              .SplitOnFirst("//")[1]
-                                                                             .SplitOnFirst(":")[0])).First(), 9735);
+                                                                             .SplitOnFirst(":")[0],
+                                                                        TestContext.Current.CancellationToken)).First(),
+                                       9735);
         var aliceAddress = $"{Convert.ToHexString(alice.LocalNodePubKeyBytes)}@{aliceHost}";
 
         await _peerManager.ConnectToPeerAsync(new PeerAddressInfo(aliceAddress));
@@ -674,7 +685,7 @@ public class ChannelOpeningFlowTests : IDisposable
         await _peerManager.StartAsync(CancellationToken.None);
 
         // Get the current block height
-        var currentHeight = (uint)await bitcoin.GetBlockCountAsync();
+        var currentHeight = (uint)await bitcoin.GetBlockCountAsync(TestContext.Current.CancellationToken);
 
         // Start the blockchain monitor at the current height
         await _blockchainMonitor.StartAsync(currentHeight, CancellationToken.None);
@@ -715,15 +726,17 @@ public class ChannelOpeningFlowTests : IDisposable
             _blockchainMonitor.OnNewBlockDetected += OnNewBlockDetected;
 
             // Send funds to our wallet
-            await bitcoin.SendToAddressAsync(
-                BitcoinAddress.Create(address1.Address, NBitcoin.Network.RegTest),
-                new Money(1100000, MoneyUnit.Satoshi)); // 0.011
-            await bitcoin.SendToAddressAsync(
-                BitcoinAddress.Create(address2.Address, NBitcoin.Network.RegTest),
-                new Money(1100000, MoneyUnit.Satoshi)); // 0.011
+            await bitcoin.SendToAddressAsync(BitcoinAddress.Create(address1.Address, NBitcoin.Network.RegTest),
+                                             new Money(1100000, MoneyUnit.Satoshi),
+                                             TestContext.Current.CancellationToken); // 0.011
+            await bitcoin.SendToAddressAsync(BitcoinAddress.Create(address2.Address, NBitcoin.Network.RegTest),
+                                             new Money(1100000, MoneyUnit.Satoshi),
+                                             TestContext.Current.CancellationToken); // 0.011
 
             // Mine blocks to confirm
-            await bitcoin.GenerateToAddressAsync(6, await bitcoin.GetNewAddressAsync());
+            await bitcoin.GenerateToAddressAsync(
+                6, await bitcoin.GetNewAddressAsync(TestContext.Current.CancellationToken),
+                TestContext.Current.CancellationToken);
 
             // wait for funding transaction to be confirmed
             Assert.True(await tsc.Task);
@@ -739,7 +752,9 @@ public class ChannelOpeningFlowTests : IDisposable
         // Connect to Alice
         var aliceHost = new IPEndPoint((await Dns.GetHostAddressesAsync(alice.Host
                                                                              .SplitOnFirst("//")[1]
-                                                                             .SplitOnFirst(":")[0])).First(), 9735);
+                                                                             .SplitOnFirst(":")[0],
+                                                                        TestContext.Current.CancellationToken)).First(),
+                                       9735);
         var aliceAddress = $"{Convert.ToHexString(alice.LocalNodePubKeyBytes)}@{aliceHost}";
 
         await _peerManager.ConnectToPeerAsync(new PeerAddressInfo(aliceAddress));

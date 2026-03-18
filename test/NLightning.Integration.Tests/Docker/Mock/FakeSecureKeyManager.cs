@@ -13,10 +13,14 @@ public class FakeSecureKeyManager : ISecureKeyManager
     private readonly ExtKey _p2TrKey;
     private readonly ExtKey _p2WpkhKey;
 
+    private readonly KeyPath _channelKeyPath = new(KeyConstants.ChannelKeyPathString);
     private readonly KeyPath _depositP2TrKeyPath = new(KeyConstants.P2TrKeyPathString);
     private readonly KeyPath _depositP2WpkhKeyPath = new(KeyConstants.P2WpkhKeyPathString);
 
-    public BitcoinKeyPath KeyPath => new BitcoinKeyPath([]);
+    private readonly object _lastUsedIndexLock = new();
+    private uint _lastUsedIndex;
+
+    public BitcoinKeyPath KeyPath => new([]);
 
     // ReSharper disable once UnassignedGetOnlyAutoProperty
     public BitcoinKeyPath ChannelKeyPath { get; }
@@ -33,13 +37,20 @@ public class FakeSecureKeyManager : ISecureKeyManager
 
     public ExtPrivKey GetNextChannelKey(out uint index)
     {
-        index = 0;
-        return _nodeKey.ToBytes();
+        lock (_lastUsedIndexLock)
+        {
+            _lastUsedIndex++;
+            index = _lastUsedIndex;
+        }
+
+        var derivedKey = _nodeKey.Derive(_channelKeyPath.Derive(index));
+        return derivedKey.ToBytes();
     }
 
     public ExtPrivKey GetChannelKeyAtIndex(uint index)
     {
-        return _nodeKey.ToBytes();
+        var derivedKey = _nodeKey.Derive(_channelKeyPath.Derive(index));
+        return derivedKey.ToBytes();
     }
 
     public ExtPrivKey GetDepositP2TrKeyAtIndex(uint index, bool isChange)

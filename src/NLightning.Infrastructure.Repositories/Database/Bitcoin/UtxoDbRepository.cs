@@ -35,7 +35,7 @@ public class UtxoDbRepository(NLightningDbContext context)
     {
         var query = Get(asNoTracking: true).AsQueryable();
         if (includeWalletAddress)
-            query.Include(x => x.WalletAddress);
+            query = query.Include(x => x.WalletAddress);
 
         var utxoSet = await query.ToListAsync();
 
@@ -73,11 +73,11 @@ public class UtxoDbRepository(NLightningDbContext context)
                                       entity.BlockHeight, entity.AddressIndex, entity.IsAddressChange,
                                       entity.AddressType);
 
-        if (entity.WalletAddress is not null)
-        {
-            var walletAddressModel = WalletAddressesDbRepository.MapEntityToModel(entity.WalletAddress);
-            utxoModel.SetWalletAddress(walletAddressModel);
-        }
+        if (entity.WalletAddress is null)
+            return utxoModel;
+
+        var walletAddressModel = WalletAddressesDbRepository.MapEntityToModel(entity.WalletAddress);
+        utxoModel.SetWalletAddress(walletAddressModel);
 
         return utxoModel;
     }

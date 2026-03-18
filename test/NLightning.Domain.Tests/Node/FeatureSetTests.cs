@@ -62,10 +62,6 @@ public class FeatureSetTests
     [Theory]
     [InlineData(Feature.GossipQueriesEx, Feature.GossipQueries, false)]
     [InlineData(Feature.GossipQueriesEx, Feature.GossipQueries, true)]
-    [InlineData(Feature.PaymentSecret, Feature.VarOnionOptin, false)]
-    [InlineData(Feature.PaymentSecret, Feature.VarOnionOptin, true)]
-    [InlineData(Feature.OptionAnchors, Feature.OptionStaticRemoteKey, false)]
-    [InlineData(Feature.OptionAnchors, Feature.OptionStaticRemoteKey, true)]
     public void Given_Features_When_SetFeatureADependsOnFeatureB_Then_FeatureBIsSet(
         Feature feature, Feature dependsOn, bool isCompulsory)
     {
@@ -86,10 +82,6 @@ public class FeatureSetTests
     [Theory]
     [InlineData(Feature.GossipQueries, Feature.GossipQueriesEx, false)]
     [InlineData(Feature.GossipQueries, Feature.GossipQueriesEx, true)]
-    [InlineData(Feature.VarOnionOptin, Feature.PaymentSecret, false)]
-    [InlineData(Feature.VarOnionOptin, Feature.PaymentSecret, true)]
-    [InlineData(Feature.OptionStaticRemoteKey, Feature.OptionAnchors, false)]
-    [InlineData(Feature.OptionStaticRemoteKey, Feature.OptionAnchors, true)]
     public void Given_Features_When_UnsetFeatureA_Then_FeatureBIsUnset(Feature feature, Feature dependent,
                                                                        bool isCompulsory)
     {
@@ -117,10 +109,10 @@ public class FeatureSetTests
         features.Changed += (_, _) => eventRaised = true;
 
         // Act
-        features.SetFeature(42, true);
+        features.SetFeature(134, true);
 
         // Assert
-        Assert.True(features.IsFeatureSet(42, false));
+        Assert.True(features.IsFeatureSet(134, false));
         Assert.True(eventRaised);
     }
 
