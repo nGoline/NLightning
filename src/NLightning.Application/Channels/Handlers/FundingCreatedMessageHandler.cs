@@ -114,7 +114,7 @@ public class FundingCreatedMessageHandler : IChannelMessageHandler<FundingCreate
         _channelMemoryRepository.AddChannel(channel);
 
         // Remove the temporary channel
-        _channelMemoryRepository.RemoveTemporaryChannel(peerPubKey, oldChannelId);
+        _channelMemoryRepository.TryRemoveTemporaryChannel(peerPubKey, oldChannelId);
 
         await _blockchainMonitor.WatchTransactionAsync(channel.ChannelId, payload.FundingTxId,
                                                        channel.ChannelConfig.MinimumDepth);
@@ -129,6 +129,7 @@ public class FundingCreatedMessageHandler : IChannelMessageHandler<FundingCreate
     {
         try
         {
+            // TODO: REVIEW FULL FLOW
             // Check if the channel already exists
             var existingChannel = await _unitOfWork.ChannelDbRepository.GetByIdAsync(channel.ChannelId);
             if (existingChannel is not null)

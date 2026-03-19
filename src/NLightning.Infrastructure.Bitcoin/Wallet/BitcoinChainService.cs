@@ -34,9 +34,14 @@ public class BitcoinChainService : IBitcoinChainService
     {
         try
         {
-            _logger.LogInformation("Broadcasting transaction {TxId}", transaction.GetHash());
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("Broadcasting transaction {TxId}", transaction.GetHash());
+
             var result = await _rpcClient.SendRawTransactionAsync(transaction);
-            _logger.LogInformation("Successfully broadcast transaction {TxId}", result);
+
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("Successfully broadcast transaction {TxId}", result);
+
             return result;
         }
         catch (Exception ex)

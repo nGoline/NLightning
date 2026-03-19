@@ -32,8 +32,9 @@ public class ChannelReadyMessageHandler : IChannelMessageHandler<ChannelReadyMes
     public async Task<IChannelMessage?> HandleAsync(ChannelReadyMessage message, ChannelState currentState,
                                                     FeatureOptions negotiatedFeatures, CompactPubKey peerPubKey)
     {
-        _logger.LogTrace("Processing ChannelReadyMessage with ChannelId: {ChannelId} from Peer: {PeerPubKey}",
-                         message.Payload.ChannelId, peerPubKey);
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("Processing ChannelReadyMessage with ChannelId: {ChannelId} from Peer: {PeerPubKey}",
+                             message.Payload.ChannelId, peerPubKey);
 
         var payload = message.Payload;
 
@@ -41,8 +42,10 @@ public class ChannelReadyMessageHandler : IChannelMessageHandler<ChannelReadyMes
                               or ChannelState.ReadyForThem
                               or ChannelState.ReadyForUs
                               or ChannelState.Open))
-            throw new ChannelErrorException("Channel had the wrong state", payload.ChannelId,
-                                            "This channel is not ready to be opened");
+            throw new ChannelErrorException(
+                $"Unexpected ChannelReady message in state {Enum.GetName(currentState)}",
+                payload.ChannelId,
+                "Protocol violation: unexpected ChannelReady message");
 
         // Check if there's a channel for this peer
         if (!_channelMemoryRepository.TryGetChannel(payload.ChannelId, out var channel))
@@ -56,87 +59,71 @@ public class ChannelReadyMessageHandler : IChannelMessageHandler<ChannelReadyMes
                                               "This channel requires a ShortChannelIdTlv to be provided");
 
         // Store their new per-commitment point
-        if (channel.RemoteKeySet.CurrentPerCommitmentIndex == 0)
+        if (channel.RemoteKeySet!.CurrentPerCommitmentIndex == 0)
             channel.RemoteKeySet.UpdatePerCommitmentPoint(payload.SecondPerCommitmentPoint);
 
-        // Handle ScidAlias
-        if (currentState is ChannelState.Open or ChannelState.ReadyForThem)
+        switch (currentState)
         {
-            if (mustUseScidAlias)
-            {
-                if (ShouldReplaceAlias())
+            case ChannelState.Open or ChannelState.ReadyForThem: // Handle ScidAlias
                 {
-                    var oldAlias = channel.RemoteAlias;
-                    channel.RemoteAlias = message.ShortChannelIdTlv!.ShortChannelId;
+                    if (mustUseScidAlias)
+                    {
+                        if (ShouldReplaceAlias())
+                        {
+                            var oldAlias = channel.RemoteAlias;
+                            channel.RemoteAlias = message.ShortChannelIdTlv!.ShortChannelId;
 
-                    _logger.LogDebug("Updated remote alias for channel {ChannelId} from {OldAlias} to {NewAlias}",
-                                     payload.ChannelId, oldAlias, channel.RemoteAlias);
+                            if (_logger.IsEnabled(LogLevel.Debug))
+                                _logger.LogDebug(
+                                    "Updated remote alias for channel {ChannelId} from {OldAlias} to {NewAlias}",
+                                    payload.ChannelId, oldAlias, channel.RemoteAlias);
 
+                            await PersistChannelAsync(channel);
+                        }
+                        else if (_logger.IsEnabled(LogLevel.Debug))
+                        {
+                            _logger.LogDebug(
+                                "Keeping existing remote alias {ExistingAlias} for channel {ChannelId}",
+                                channel.RemoteAlias,
+                                payload.ChannelId);
+                        }
+                    }
+                    else if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Received duplicate ChannelReady message for channel {ChannelId} in Open state",
+                                         payload.ChannelId);
+
+                    break;
+                }
+            case ChannelState.ReadyForUs: // We already sent our ChannelReady, now they sent theirs
+                {
+                    // Valid transition: ReadyForUs -> Open
+                    channel.UpdateState(ChannelState.Open);
                     await PersistChannelAsync(channel);
+
+                    if (_logger.IsEnabled(LogLevel.Information))
+                        _logger.LogInformation("Channel {ChannelId} is now open", payload.ChannelId);
+
+                    // TODO: Notify application layer that channel is fully open
+                    // TODO: Update routing tables
+
+                    break;
                 }
-                else
+            case ChannelState.V1FundingSigned: // First ChannelReady
                 {
-                    _logger.LogDebug(
-                        "Keeping existing remote alias {ExistingAlias} for channel {ChannelId}", channel.RemoteAlias,
-                        payload.ChannelId);
+                    // Valid transition: V1FundingSigned -> ReadyForThem
+                    channel.UpdateState(ChannelState.ReadyForThem);
+                    await PersistChannelAsync(channel);
+
+                    if (_logger.IsEnabled(LogLevel.Information))
+                        _logger.LogInformation(
+                            "Received ChannelReady from peer for channel {ChannelId}, waiting for funding confirmation",
+                            payload.ChannelId);
+
+                    break;
                 }
-            }
-            else
-                _logger.LogDebug("Received duplicate ChannelReady message for channel {ChannelId} in Open state",
-                                 payload.ChannelId);
-
-            return null; // No further action needed, we are already open
         }
 
-        if (channel.IsInitiator) // Handle state transitions based on whether we are the initiator
-        {
-            // We already sent our ChannelReady, now they sent theirs
-            if (currentState == ChannelState.ReadyForUs)
-            {
-                // Valid transition: ReadyForUs -> Open
-                channel.UpdateState(ChannelState.Open);
-                await PersistChannelAsync(channel);
-
-                _logger.LogInformation("Channel {ChannelId} is now open (we are initiator)", payload.ChannelId);
-
-                // TODO: Notify application layer that channel is fully open
-                // TODO: Update routing tables
-
-                return null;
-            }
-
-            // Invalid state for initiator receiving ChannelReady
-            _logger.LogError(
-                "Received ChannelReady message for channel {ChannelId} in invalid state {CurrentState} (we are initiator). Expected: ReadyForUs",
-                payload.ChannelId, currentState);
-
-            throw new ChannelErrorException($"Unexpected ChannelReady message in state {Enum.GetName(currentState)}",
-                                            payload.ChannelId,
-                                            "Protocol violation: unexpected ChannelReady message");
-        }
-
-        if (currentState == ChannelState.V1FundingSigned) // We are not the initiator
-        {
-            // First ChannelReady from initiator
-            // Valid transition: V1FundingSigned -> ReadyForThem
-            channel.UpdateState(ChannelState.ReadyForThem);
-            await PersistChannelAsync(channel);
-
-            _logger.LogInformation(
-                "Received ChannelReady from initiator for channel {ChannelId}, waiting for funding confirmation",
-                payload.ChannelId);
-
-            return null;
-        }
-
-        // Invalid state for non-initiator receiving ChannelReady
-        _logger.LogError(
-            "Received ChannelReady message for channel {ChannelId} in invalid state {CurrentState} (we are not initiator). Expected: V1FundingSigned or ReadyForThem",
-            payload.ChannelId, currentState);
-
-        throw new ChannelErrorException($"Unexpected ChannelReady message in state {Enum.GetName(currentState)}",
-                                        payload.ChannelId,
-                                        "Protocol violation: unexpected ChannelReady message");
+        return null; // No further action needed
     }
 
     /// <summary>
@@ -155,7 +142,8 @@ public class ChannelReadyMessageHandler : IChannelMessageHandler<ChannelReadyMes
 
             _channelMemoryRepository.UpdateChannel(channel);
 
-            _logger.LogDebug("Successfully persisted channel {ChannelId} to database", channel.ChannelId);
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("Successfully persisted channel {ChannelId} to database", channel.ChannelId);
         }
         catch (Exception ex)
         {

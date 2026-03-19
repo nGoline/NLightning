@@ -27,7 +27,7 @@ public interface IPeerCommunicationService : IDisposable
     /// <summary>
     /// Event raised when the peer is disconnected.
     /// </summary>
-    event EventHandler? DisconnectEvent;
+    event EventHandler<Exception?>? DisconnectEvent;
 
     /// <summary>
     /// Event raised when an exception occurs.

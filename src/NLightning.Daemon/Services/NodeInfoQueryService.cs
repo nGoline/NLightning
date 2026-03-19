@@ -6,17 +6,24 @@ namespace NLightning.Daemon.Services;
 using Contracts.Control;
 using Domain.Node.Options;
 using Domain.Persistence.Interfaces;
+using Domain.Protocol.Interfaces;
+using Infrastructure.Transport.Interfaces;
 using Interfaces;
 
 public sealed class NodeInfoQueryService : INodeInfoQueryService
 {
-    private readonly IServiceProvider _services;
     private readonly NodeOptions _nodeOptions;
+    private readonly ISecureKeyManager _secureKeyManager;
+    private readonly IServiceProvider _services;
+    private readonly ITcpService _tcpService;
 
-    public NodeInfoQueryService(IServiceProvider services, IOptions<NodeOptions> nodeOptions)
+    public NodeInfoQueryService(IOptions<NodeOptions> nodeOptions, ISecureKeyManager secureKeyManager,
+                                IServiceProvider services, ITcpService tcpService)
     {
-        _services = services;
         _nodeOptions = nodeOptions.Value;
+        _secureKeyManager = secureKeyManager;
+        _services = services;
+        _tcpService = tcpService;
     }
 
     public async Task<NodeInfoResponse> QueryAsync(CancellationToken ct)
@@ -47,8 +54,13 @@ public sealed class NodeInfoQueryService : INodeInfoQueryService
             }
         }
 
+        var pubKeyString = _secureKeyManager.GetNodePubKey().ToString();
+        var listeningToString = string.Join(',', _tcpService.ListeningTo.Select(e => e.ToString()).ToList());
+
         return new NodeInfoResponse
         {
+            PubKey = pubKeyString,
+            ListeningTo = listeningToString,
             Network = _nodeOptions.BitcoinNetwork,
             BestBlockHash = bestHashHex,
             BestBlockHeight = bestHeight,

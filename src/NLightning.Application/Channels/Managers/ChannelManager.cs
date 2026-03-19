@@ -162,7 +162,7 @@ public class ChannelManager : IChannelManager
             await unitOfWork.SaveChangesAsync();
 
             // Remove from dictionaries
-            _channelMemoryRepository.RemoveChannel(channel.ChannelId);
+            _channelMemoryRepository.TryRemoveChannel(channel.ChannelId);
 
             _logger.LogDebug("Successfully persisted channel {ChannelId} to database", channel.ChannelId);
         }

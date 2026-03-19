@@ -61,6 +61,10 @@ public static class NodeServiceExtensions
             services
                .AddScoped<IClientCommandHandler<OpenChannelClientRequest, OpenChannelClientResponse>,
                     OpenChannelClientHandler>();
+            services
+               .AddScoped<IClientCommandHandler<OpenChannelClientSubscriptionRequest,
+                        OpenChannelClientSubscriptionResponse>,
+                    OpenChannelClientSubscriptionHandler>();
 
             // Register IPC server and handlers
             services.AddSingleton<INamedPipeIpcService>(sp =>
@@ -68,10 +72,8 @@ public static class NodeServiceExtensions
                 var ipcAuthenticator = sp.GetRequiredService<IIpcAuthenticator>();
                 var ipcFraming = sp.GetRequiredService<IIpcFraming>();
                 var logger = sp.GetRequiredService<ILogger<NamedPipeIpcService>>();
-                var nodeOptions = sp.GetRequiredService<IOptions<NodeOptions>>();
                 var ipcRequestRouter = sp.GetRequiredService<IIpcRequestRouter>();
-                return new NamedPipeIpcService(ipcAuthenticator, configPath, ipcFraming, logger, nodeOptions,
-                                               ipcRequestRouter);
+                return new NamedPipeIpcService(ipcAuthenticator, configPath, ipcFraming, logger, ipcRequestRouter);
             });
             services.AddSingleton<IIpcFraming, LengthPrefixedIpcFraming>();
             services.AddSingleton<IIpcRequestRouter, IpcRequestRouter>();
@@ -82,6 +84,7 @@ public static class NodeServiceExtensions
             services.AddSingleton<IIpcCommandHandler, GetAddressIpcHandler>();
             services.AddSingleton<IIpcCommandHandler, GetWalletBalanceIpcHandler>();
             services.AddSingleton<IIpcCommandHandler, OpenChannelIpcHandler>();
+            services.AddSingleton<IIpcCommandHandler, OpenChannelSubscriptionIpcHandler>();
             services.AddSingleton<IIpcAuthenticator>(sp =>
             {
                 var cookiePath = NodeUtils.GetCookieFilePath(configPath);

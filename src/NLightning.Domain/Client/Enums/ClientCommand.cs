@@ -12,5 +12,6 @@ public enum ClientCommand
     ListPeers = 3,
     GetAddress = 4,
     WalletBalance = 5,
-    OpenChannel = 6
+    OpenChannel = 6,
+    OpenChannelSubscription = 7
 }

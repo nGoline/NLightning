@@ -1,6 +1,5 @@
 using System.IO.Pipes;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace NLightning.Daemon.Services.Ipc;
 
@@ -8,7 +7,6 @@ using Contracts.Utilities;
 using Daemon.Ipc.Interfaces;
 using Domain.Client.Constants;
 using Domain.Client.Interfaces;
-using Domain.Node.Options;
 using Factories;
 using Transport.Ipc;
 
@@ -28,8 +26,7 @@ internal sealed class NamedPipeIpcService : INamedPipeIpcService
     private Task? _listenerTask;
 
     public NamedPipeIpcService(IIpcAuthenticator authenticator, string configPath, IIpcFraming framing,
-                               ILogger<NamedPipeIpcService> logger, IOptions<NodeOptions> _,
-                               IIpcRequestRouter router)
+                               ILogger<NamedPipeIpcService> logger, IIpcRequestRouter router)
     {
         _logger = logger;
         _authenticator = authenticator;
@@ -140,7 +137,7 @@ internal sealed class NamedPipeIpcService : INamedPipeIpcService
             try { await stream.DisposeAsync(); }
             catch
             {
-                /* ignore */
+                //ignore
             }
         }
     }

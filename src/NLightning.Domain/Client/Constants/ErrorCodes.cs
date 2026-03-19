@@ -8,4 +8,5 @@ public static class ErrorCodes
     public const string ConnectionError = "connection_error";
     public const string ServerError = "server_error";
     public const string NotEnoughBalance = "not_enough_balance";
+    public const string InvalidChannel = "invalid_channel";
 }

@@ -32,6 +32,7 @@ public class ChannelDbRepository : BaseDbRepository<ChannelEntity>, IChannelDbRe
     public async Task AddAsync(ChannelModel channelModel)
     {
         var channelEntity = await MapDomainToEntity(channelModel, _messageSerializer);
+
         Insert(channelEntity);
     }
 

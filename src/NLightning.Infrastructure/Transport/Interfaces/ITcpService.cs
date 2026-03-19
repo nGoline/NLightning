@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace NLightning.Infrastructure.Transport.Interfaces;
 
 using Events;
@@ -6,6 +8,15 @@ using Protocol.Models;
 
 public interface ITcpService
 {
+    /// <summary>
+    /// Gets the list of IP endpoints that the service is currently listening to for incoming connections.
+    /// </summary>
+    /// <remarks>
+    /// This property provides the collection of addresses and ports actively used by the TCP listener
+    /// to accept connections. The list remains updated as the service starts and stops listening to various addresses.
+    /// </remarks>
+    List<EndPoint> ListeningTo { get; }
+
     /// <summary>
     /// Event triggered when a new peer successfully establishes a connection.
     /// </summary>

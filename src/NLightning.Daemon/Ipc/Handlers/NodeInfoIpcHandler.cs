@@ -32,6 +32,8 @@ internal sealed class NodeInfoIpcHandler : IIpcCommandHandler
             var resp = await _query.QueryAsync(ct);
             var ipcResp = new NodeInfoIpcResponse
             {
+                PubKey = new CompactPubKey(Convert.FromHexString(resp.PubKey)),
+                ListeningTo = resp.ListeningTo.Split(',').ToList(),
                 Network = resp.Network,
                 BestBlockHash = new Hash(Convert.FromHexString(resp.BestBlockHash)),
                 BestBlockHeight = resp.BestBlockHeight,

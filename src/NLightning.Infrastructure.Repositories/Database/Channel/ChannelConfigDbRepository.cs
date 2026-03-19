@@ -70,7 +70,8 @@ public class ChannelConfigDbRepository(NLightningDbContext context)
         if (entity.RemoteUpfrontShutdownScript is not null)
             remoteUpfrontShutdownScript = entity.RemoteUpfrontShutdownScript;
 
-        return new ChannelConfig(channelReserveAmount, LightningMoney.Satoshis(entity.FeeRatePerKwSatoshis),
+        return new ChannelConfig(channelReserveAmount ?? LightningMoney.Zero,
+                                 LightningMoney.Satoshis(entity.FeeRatePerKwSatoshis),
                                  LightningMoney.MilliSatoshis(entity.HtlcMinimumMsat),
                                  LightningMoney.Satoshis(entity.LocalDustLimitAmountSats), entity.MaxAcceptedHtlcs,
                                  LightningMoney.MilliSatoshis(entity.MaxHtlcAmountInFlight), entity.MinimumDepth,

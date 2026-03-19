@@ -176,10 +176,10 @@ public sealed class PeerService : IPeerService
         OnExceptionRaised?.Invoke(this, e);
     }
 
-    private void HandleDisconnection(object? sender, EventArgs e)
+    private void HandleDisconnection(object? sender, Exception e)
     {
-        _logger.LogTrace("Handling disconnection for peer {Peer}", PeerPubKey);
-        OnDisconnect?.Invoke(this, new PeerDisconnectedEventArgs(PeerPubKey));
+        _logger.LogTrace(e, "Handling disconnection for peer {Peer}", PeerPubKey);
+        OnDisconnect?.Invoke(this, new PeerDisconnectedEventArgs(PeerPubKey, e));
     }
 
     /// <summary>

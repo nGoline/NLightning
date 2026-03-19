@@ -33,7 +33,7 @@ public class PeerCommunicationService : IPeerCommunicationService
     public event EventHandler<IMessage?>? MessageReceived;
 
     /// <inheritdoc />
-    public event EventHandler? DisconnectEvent;
+    public event EventHandler<Exception?>? DisconnectEvent;
 
     /// <inheritdoc />
     public event EventHandler<Exception>? ExceptionRaised;
@@ -157,7 +157,7 @@ public class PeerCommunicationService : IPeerCommunicationService
         }
         finally
         {
-            DisconnectEvent?.Invoke(this, EventArgs.Empty);
+            DisconnectEvent?.Invoke(this, exception);
         }
     }
 

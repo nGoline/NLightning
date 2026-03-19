@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 namespace NLightning.Daemon.Handlers;
 
 using Domain.Bitcoin.Interfaces;
+using Domain.Channels.Events;
 using Domain.Channels.Interfaces;
 using Domain.Channels.ValueObjects;
 using Domain.Client.Constants;
@@ -17,8 +18,6 @@ using Domain.Node;
 using Domain.Node.Events;
 using Domain.Node.Interfaces;
 using Domain.Node.ValueObjects;
-using Domain.Persistence.Interfaces;
-using Domain.Protocol.Constants;
 using Domain.Protocol.Interfaces;
 using Domain.Protocol.Tlv;
 using Infrastructure.Bitcoin.Wallet.Interfaces;
@@ -34,18 +33,18 @@ public sealed class OpenChannelClientHandler
     private readonly ILogger<OpenChannelClientHandler> _logger;
     private readonly IMessageFactory _messageFactory;
     private readonly IPeerManager _peerManager;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IUtxoMemoryRepository _utxoMemoryRepository;
 
-    internal event EventHandler<EventArgs>? OnWaitingConfirmation;
+    private ChannelId _channelId = ChannelId.Zero;
+    private IPeerService? _peerService;
 
+    /// <inheritdoc/>
     public ClientCommand Command => ClientCommand.OpenChannel;
 
     public OpenChannelClientHandler(IBlockchainMonitor blockchainMonitor, IChannelFactory channelFactory,
                                     IChannelMemoryRepository channelMemoryRepository,
                                     ILogger<OpenChannelClientHandler> logger, IMessageFactory messageFactory,
-                                    IPeerManager peerManager, IUnitOfWork unitOfWork,
-                                    IUtxoMemoryRepository utxoMemoryRepository)
+                                    IPeerManager peerManager, IUtxoMemoryRepository utxoMemoryRepository)
     {
         _blockchainMonitor = blockchainMonitor;
         _channelFactory = channelFactory;
@@ -53,10 +52,10 @@ public sealed class OpenChannelClientHandler
         _logger = logger;
         _messageFactory = messageFactory;
         _peerManager = peerManager;
-        _unitOfWork = unitOfWork;
         _utxoMemoryRepository = utxoMemoryRepository;
     }
 
+    /// <inheritdoc/>
     public async Task<OpenChannelClientResponse> HandleAsync(OpenChannelClientRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.NodeInfo))
@@ -83,14 +82,22 @@ public sealed class OpenChannelClientHandler
         var channel =
             await _channelFactory.CreateChannelV1AsInitiatorAsync(request, peer.NegotiatedFeatures, peerId);
 
-        _logger.LogTrace("Created Channel {id} with fundingPubKey: {fundingPubKey}", channel.ChannelId,
-                         channel.LocalKeySet.FundingCompactPubKey);
+        // Save the channelId for later
+        _channelId = channel.ChannelId;
+
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("Created Temporary Channel {id} with fundingPubKey: {fundingPubKey}", channel.ChannelId,
+                             channel.LocalKeySet.FundingCompactPubKey);
+
+        // Select UTXOs and mark them as toSpend for this channel
+        _utxoMemoryRepository.LockUtxosToSpendOnChannel(request.FundingAmount, channel.ChannelId);
+
+        // Create a task completion source for the response
+        var tsc = new TaskCompletionSource<OpenChannelClientResponse>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
 
         try
         {
-            // Select UTXOs and mark them as toSpend for this channel
-            var utxos = _utxoMemoryRepository.LockUtxosToSpendOnChannel(request.FundingAmount, channel.ChannelId);
-
             // Add the channel to dictionaries
             _channelMemoryRepository.AddTemporaryChannel(peerId, channel);
 
@@ -111,11 +118,9 @@ public sealed class OpenChannelClientHandler
             var channelTypeTlv = new ChannelTypeTlv(featureSetBytes);
 
             // Create UpfrontShutdownScriptTlv if needed
-            UpfrontShutdownScriptTlv? upfrontShutdownScriptTlv = null;
-            if (channel.LocalUpfrontShutdownScript is not null)
-                upfrontShutdownScriptTlv = new UpfrontShutdownScriptTlv(channel.LocalUpfrontShutdownScript.Value);
-            else
-                upfrontShutdownScriptTlv = new UpfrontShutdownScriptTlv(Array.Empty<byte>());
+            var upfrontShutdownScriptTlv = channel.LocalUpfrontShutdownScript is not null
+                                               ? new UpfrontShutdownScriptTlv(channel.LocalUpfrontShutdownScript.Value)
+                                               : new UpfrontShutdownScriptTlv(Array.Empty<byte>());
 
             // Create the ChannelFlags
             var channelFlags = new ChannelFlags(ChannelFlag.None);
@@ -132,123 +137,94 @@ public sealed class OpenChannelClientHandler
                 channel.LocalKeySet.HtlcCompactBasepoint, channel.LocalKeySet.CurrentPerCommitmentCompactPoint,
                 channelFlags, channelTypeTlv, upfrontShutdownScriptTlv);
 
-            if (!peer.TryGetPeerService(out var peerService))
+            if (!peer.TryGetPeerService(out _peerService))
                 throw new ClientException(ErrorCodes.InvalidOperation, "Error getting peerService from peer");
 
-            var tsc = new TaskCompletionSource<OpenChannelClientResponse>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-            peerService.OnChannelMessageReceived += ChannelMessageHandlerEnvelope;
-            peerService.OnAttentionMessageReceived += AttentionMessageHandlerEnvelope;
-            peerService.OnDisconnect += PeerDisconnectionEnvelope;
-            peerService.OnExceptionRaised += ExceptionRaisedEnvelope;
+            // Subscribe to the events before sending the message
+            _peerService.OnAttentionMessageReceived += AttentionMessageHandlerEnvelope;
+            _peerService.OnDisconnect += PeerDisconnectionEnvelope;
+            _peerService.OnExceptionRaised += ExceptionRaisedEnvelope;
+            _channelMemoryRepository.OnChannelUpgraded += ChannelUpgradedHandlerEnvelope;
 
-            try
-            {
-                await peerService.SendMessageAsync(openChannel1Message);
-            }
-            catch
-            {
-                //Unsubscribe from the event so we don't have dangling memory
-                peerService.OnChannelMessageReceived -= ChannelMessageHandlerEnvelope;
-                peerService.OnAttentionMessageReceived -= AttentionMessageHandlerEnvelope;
-                peerService.OnDisconnect -= PeerDisconnectionEnvelope;
-                peerService.OnExceptionRaised -= ExceptionRaisedEnvelope;
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("Sending OpenChannel message to peer {peerId} for channel {channelId}",
+                                       peerId,
+                                       channel.ChannelId);
+            await _peerService.SendMessageAsync(openChannel1Message);
 
-                throw;
-            }
-
-            var response = await tsc.Task;
-
-            // Unsubscribe from the event
-            peerService.OnChannelMessageReceived -= ChannelMessageHandlerEnvelope;
-            peerService.OnAttentionMessageReceived -= AttentionMessageHandlerEnvelope;
-            peerService.OnDisconnect -= PeerDisconnectionEnvelope;
-            peerService.OnExceptionRaised -= ExceptionRaisedEnvelope;
-
-            return response;
-
-            // Envelopes for the events
-            void ChannelMessageHandlerEnvelope(object? _, ChannelMessageEventArgs args) =>
-                HandleChannelMessage(args, channel.ChannelId, tsc);
-
-            void AttentionMessageHandlerEnvelope(object? _, AttentionMessageEventArgs args) =>
-                HandleAttentionMessage(args, channel.ChannelId, tsc);
-
-            void PeerDisconnectionEnvelope(object? _, PeerDisconnectedEventArgs args) =>
-                HandlePeerDisconnection(args, channel.ChannelId, tsc);
-
-            void ExceptionRaisedEnvelope(object? _, Exception e) =>
-                HandleExceptionRaised(e, channel.ChannelId, tsc);
+            return await tsc.Task;
         }
         catch
         {
-            var utxos = _utxoMemoryRepository.ReturnUtxosNotSpentOnChannel(channel.ChannelId);
-
-            // Since something went wrong, let's unlock the utxos on the database
-            foreach (var utxo in utxos)
-                _unitOfWork.UtxoDbRepository.Update(utxo);
-
-            await _unitOfWork.SaveChangesAsync();
+            _utxoMemoryRepository.ReturnUtxosNotSpentOnChannel(_channelId);
 
             throw;
         }
-    }
-
-    private void HandleChannelMessage(ChannelMessageEventArgs args, ChannelId _,
-                                      TaskCompletionSource<OpenChannelClientResponse> tsc)
-    {
-        // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
-        switch (args.Message.Type)
+        finally
         {
-            case MessageTypes.AcceptChannel:
-                Console.WriteLine("Channel accepted");
-                break;
-            case MessageTypes.FundingSigned:
-                Console.WriteLine("Funding signed");
-                OnWaitingConfirmation?.Invoke(this, EventArgs.Empty);
-                break;
-            case MessageTypes.ChannelReady:
-                {
-                    Console.WriteLine("Channel ready");
-                    if (_channelMemoryRepository.TryGetChannel(args.Message.Payload.ChannelId, out var channel)
-                     && channel.FundingOutput?.TransactionId is not null
-                     && channel.FundingOutput?.Index is not null)
-                    {
-                        tsc.TrySetResult(new OpenChannelClientResponse(channel.FundingOutput.TransactionId.Value,
-                                                                       channel.FundingOutput.Index.Value,
-                                                                       channel.ChannelId));
-                    }
-                    else
-                    {
-                        Console.Error.WriteLine("Channel not found in memory repository");
-                    }
-
-                    break;
-                }
-            default:
-                Console.WriteLine("Unknown message type: {0}", Enum.GetName(args.Message.Type));
-                break;
+            //Unsubscribe from the events so we don't have dangling memory
+            _peerService?.OnAttentionMessageReceived -= AttentionMessageHandlerEnvelope;
+            _peerService?.OnDisconnect -= PeerDisconnectionEnvelope;
+            _peerService?.OnExceptionRaised -= ExceptionRaisedEnvelope;
+            _channelMemoryRepository.OnChannelUpgraded -= ChannelUpgradedHandlerEnvelope;
         }
+
+        // Envelopes for the events
+        void AttentionMessageHandlerEnvelope(object? _, AttentionMessageEventArgs args) =>
+            HandleAttentionMessage(args, tsc);
+
+        void PeerDisconnectionEnvelope(object? _, PeerDisconnectedEventArgs args) =>
+            HandlePeerDisconnection(args, channel.RemoteNodeId, tsc);
+
+        void ExceptionRaisedEnvelope(object? _, Exception e) =>
+            HandleExceptionRaised(e, tsc);
+
+        void ChannelUpgradedHandlerEnvelope(object? _, ChannelUpgradedEventArgs args) =>
+            HandleChannelUpgraded(args, tsc);
     }
 
-    private static void HandleAttentionMessage(AttentionMessageEventArgs args, ChannelId _,
-                                               TaskCompletionSource<OpenChannelClientResponse> tsc)
+    private void HandleChannelUpgraded(ChannelUpgradedEventArgs args,
+                                       TaskCompletionSource<OpenChannelClientResponse> tsc)
     {
-        Console.Error.WriteLine($"Error opening channel: {args.Message}");
+        if (args.OldChannelId != _channelId)
+            return;
+
+        tsc.TrySetResult(new OpenChannelClientResponse(args.NewChannelId));
+
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Channel {oldChannelId} has been upgraded to {channelId}", args.OldChannelId,
+                                   args.NewChannelId);
+    }
+
+    private void HandleAttentionMessage(AttentionMessageEventArgs args,
+                                        TaskCompletionSource<OpenChannelClientResponse> tsc)
+    {
+        if (args.ChannelId != _channelId)
+            return;
+
+        _logger.LogError(
+            "Received attention message from peer {peerId} for channel {channelId}: {message}",
+            args.PeerPubKey, args.ChannelId, args.Message);
+
         tsc.TrySetException(new ChannelErrorException($"Error opening channel: {args.Message}"));
     }
 
-    private static void HandlePeerDisconnection(PeerDisconnectedEventArgs _, ChannelId __,
-                                                TaskCompletionSource<OpenChannelClientResponse> tsc)
+    private void HandlePeerDisconnection(PeerDisconnectedEventArgs args, CompactPubKey peerPubKey,
+                                         TaskCompletionSource<OpenChannelClientResponse> tsc)
     {
-        Console.Error.WriteLine("Peer disconnected");
-        tsc.TrySetException(new ChannelErrorException("Error opening channel: Peer disconnected"));
+        if (args.PeerPubKey != peerPubKey)
+            return;
+
+        _logger.LogError("Peer disconnected without notice");
+        tsc.TrySetException(new ConnectionException("Error opening channel: Peer disconnected"));
     }
 
-    private static void HandleExceptionRaised(Exception e, ChannelId _,
-                                              TaskCompletionSource<OpenChannelClientResponse> tsc)
+    private void HandleExceptionRaised(Exception e, TaskCompletionSource<OpenChannelClientResponse> tsc)
     {
-        Console.Error.WriteLine(e.ToString());
+        if (e is not ChannelErrorException ce || ce.ChannelId != _channelId)
+            return;
+
+        _logger.LogError("Exception raised while opening channel: {message}", e.Message);
         tsc.TrySetException(e);
     }
 }

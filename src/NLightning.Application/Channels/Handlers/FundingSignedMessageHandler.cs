@@ -21,7 +21,6 @@ using Interfaces;
 public class FundingSignedMessageHandler : IChannelMessageHandler<FundingSignedMessage>
 {
     private readonly IBlockchainMonitor _blockchainMonitor;
-    private readonly IBitcoinWalletService _bitcoinWalletService;
     private readonly IChannelMemoryRepository _channelMemoryRepository;
     private readonly ICommitmentTransactionBuilder _commitmentTransactionBuilder;
     private readonly ICommitmentTransactionModelFactory _commitmentTransactionModelFactory;
@@ -32,7 +31,7 @@ public class FundingSignedMessageHandler : IChannelMessageHandler<FundingSignedM
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUtxoMemoryRepository _utxoMemoryRepository;
 
-    public FundingSignedMessageHandler(IBlockchainMonitor blockchainMonitor, IBitcoinWalletService bitcoinWalletService,
+    public FundingSignedMessageHandler(IBlockchainMonitor blockchainMonitor,
                                        IChannelMemoryRepository channelMemoryRepository,
                                        ICommitmentTransactionBuilder commitmentTransactionBuilder,
                                        ICommitmentTransactionModelFactory commitmentTransactionModelFactory,
@@ -42,7 +41,6 @@ public class FundingSignedMessageHandler : IChannelMessageHandler<FundingSignedM
                                        IUnitOfWork unitOfWork, IUtxoMemoryRepository utxoMemoryRepository)
     {
         _blockchainMonitor = blockchainMonitor;
-        _bitcoinWalletService = bitcoinWalletService;
         _channelMemoryRepository = channelMemoryRepository;
         _commitmentTransactionBuilder = commitmentTransactionBuilder;
         _commitmentTransactionModelFactory = commitmentTransactionModelFactory;
@@ -57,8 +55,9 @@ public class FundingSignedMessageHandler : IChannelMessageHandler<FundingSignedM
     public async Task<IChannelMessage?> HandleAsync(FundingSignedMessage message, ChannelState currentState,
                                                     FeatureOptions negotiatedFeatures, CompactPubKey peerPubKey)
     {
-        _logger.LogTrace("Processing FundingCreatedMessage with ChannelId: {ChannelId} from Peer: {PeerPubKey}",
-                         message.Payload.ChannelId, peerPubKey);
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("Processing FundingCreatedMessage with ChannelId: {ChannelId} from Peer: {PeerPubKey}",
+                             message.Payload.ChannelId, peerPubKey);
 
         var payload = message.Payload;
 
@@ -80,12 +79,8 @@ public class FundingSignedMessageHandler : IChannelMessageHandler<FundingSignedM
         // Validate remote signature for our local commitment transaction
         _lightningSigner.ValidateSignature(channel.ChannelId, payload.Signature, localUnsignedCommitmentTransaction);
 
-        // Update the channel with the new signatures and the new state
+        // Update the channel with the new signature
         channel.UpdateLastReceivedSignature(payload.Signature);
-        channel.UpdateState(ChannelState.V1FundingSigned);
-
-        // Save to the database
-        await PersistChannelAsync(channel);
 
         // Get the locked utxos to create the funding transaction
         var utxos = _utxoMemoryRepository.GetLockedUtxosForChannel(channel.ChannelId);
@@ -99,26 +94,43 @@ public class FundingSignedMessageHandler : IChannelMessageHandler<FundingSignedM
         if (!allSigned)
             throw new ChannelErrorException("Unable to sign all inputs for the funding transaction");
 
+        // Persist the channel to the database before publishing the transaction, so the watched transaction can point
+        // to the channel
+        await PersistChannelAsync(channel);
+
         await _blockchainMonitor.PublishAndWatchTransactionAsync(channel.ChannelId, unsignedFundingTransaction,
                                                                  channel.ChannelConfig.MinimumDepth);
+
+        // Now that we should remember the channel, we update its state
+        channel.UpdateState(ChannelState.V1FundingSigned);
+
+        // Save to the database
+        await PersistChannelAsync(channel);
 
         return null;
     }
 
     /// <summary>
-    /// Persists a channel to the database using the scoped Unit of Work
+    /// Persists a channel to the database using a scoped Unit of Work
     /// </summary>
     private async Task PersistChannelAsync(ChannelModel channel)
     {
         try
         {
-            // Check if the channel already exists
-            var existingChannel = await _unitOfWork.ChannelDbRepository.GetByIdAsync(channel.ChannelId) ?? throw new ChannelWarningException("Channel not found", channel.ChannelId,
-                                                  "This channel is missing in our database");
-            await _unitOfWork.ChannelDbRepository.UpdateAsync(channel);
+            // Update the channel in memory first
+            _channelMemoryRepository.UpdateChannel(channel);
+
+            // Check if we are adding or if we need to update the channel
+            var existingChannel = await _unitOfWork.ChannelDbRepository.GetByIdAsync(channel.ChannelId);
+            if (existingChannel is not null)
+                await _unitOfWork.ChannelDbRepository.UpdateAsync(channel);
+            else
+                await _unitOfWork.ChannelDbRepository.AddAsync(channel);
+
             await _unitOfWork.SaveChangesAsync();
 
-            _logger.LogDebug("Successfully persisted channel {ChannelId} to database", channel.ChannelId);
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("Successfully persisted channel {ChannelId} to database", channel.ChannelId);
         }
         catch (Exception ex)
         {

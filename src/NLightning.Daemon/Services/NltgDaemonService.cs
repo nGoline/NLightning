@@ -45,11 +45,16 @@ public class NltgDaemonService : BackgroundService
                     ?? _configuration.GetValue<bool?>("daemon-child")
                     ?? _nodeOptions.Daemon;
 
-        _logger.LogInformation("NLTG Daemon started on {Network} network", network);
-        _logger.LogDebug("Running in daemon mode: {IsDaemon}", isDaemon);
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("NLTG Daemon started on {Network} network", network);
 
-        var pubKey = _secureKeyManager.GetNodePubKey();
-        _logger.LogDebug("lightning-cli connect {pubKey}@docker.for.mac.host.internal:9735", pubKey.ToString());
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Running in daemon mode: {IsDaemon}", isDaemon);
+
+            var pubKey = _secureKeyManager.GetNodePubKey();
+            _logger.LogDebug("Our PubKey is {pubKey}", pubKey.ToString());
+        }
 
         try
         {

@@ -1,4 +1,5 @@
 using MessagePack;
+using NLightning.Client.Handlers;
 using NLightning.Client.Ipc;
 using NLightning.Client.Printers;
 using NLightning.Client.Utils;
@@ -66,8 +67,7 @@ try
             break;
         case "openchannel":
         case "open-channel":
-            var channel = await client.OpenChannelAsync(commandArgs[0], commandArgs[1], cts.Token);
-            new OpenChannelPrinter().Print(channel);
+            OpenChannelMessageHandler.HandleAsync(commandArgs, client, cts.Token).GetAwaiter().GetResult();
             break;
         default:
             Console.Error.WriteLine($"Unknown command: {cmd}");

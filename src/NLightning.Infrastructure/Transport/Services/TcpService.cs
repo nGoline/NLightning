@@ -2,15 +2,15 @@ using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NLightning.Domain.Exceptions;
-using NLightning.Infrastructure.Node.ValueObjects;
-using NLightning.Infrastructure.Protocol.Models;
 
 namespace NLightning.Infrastructure.Transport.Services;
 
+using Domain.Exceptions;
 using Domain.Node.Options;
 using Events;
 using Interfaces;
+using Node.ValueObjects;
+using Protocol.Models;
 
 public class TcpService : ITcpService
 {
@@ -20,6 +20,8 @@ public class TcpService : ITcpService
 
     private CancellationTokenSource? _cts;
     private Task? _listeningTask;
+
+    public List<EndPoint> ListeningTo => _listeners.Select(l => l.LocalEndpoint).ToList();
 
     /// <inheritdoc />
     public event EventHandler<NewPeerConnectedEventArgs>? OnNewPeerConnected;
@@ -49,7 +51,8 @@ public class TcpService : ITcpService
             listener.Start();
             _listeners.Add(listener);
 
-            _logger.LogInformation("Listening for connections on {Address}:{Port}", ipAddress, port);
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("Listening for connections on {Address}:{Port}", ipAddress, port);
         }
 
         _listeningTask = ListenForConnectionsAsync(_cts.Token);

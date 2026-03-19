@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using NLightning.Domain.Persistence.Interfaces;
 
 namespace NLightning.Application.Channels.Handlers;
 
@@ -18,7 +19,6 @@ using Domain.Crypto.ValueObjects;
 using Domain.Enums;
 using Domain.Exceptions;
 using Domain.Node.Options;
-using Domain.Persistence.Interfaces;
 using Domain.Protocol.Interfaces;
 using Domain.Protocol.Messages;
 using Domain.Protocol.Models;
@@ -73,8 +73,9 @@ public class AcceptChannel1MessageHandler : IChannelMessageHandler<AcceptChannel
     public async Task<IChannelMessage?> HandleAsync(AcceptChannel1Message message, ChannelState currentState,
                                                     FeatureOptions negotiatedFeatures, CompactPubKey peerPubKey)
     {
-        _logger.LogTrace("Processing AcceptChannel1Message with ChannelId: {ChannelId} from Peer: {PeerPubKey}",
-                         message.Payload.ChannelId, peerPubKey);
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("Processing AcceptChannel1Message with ChannelId: {ChannelId} from Peer: {PeerPubKey}",
+                             message.Payload.ChannelId, peerPubKey);
 
         var payload = message.Payload;
 
@@ -154,6 +155,9 @@ public class AcceptChannel1MessageHandler : IChannelMessageHandler<AcceptChannel
 
         tempChannel.AddCommitmentNumber(commitmentNumber);
 
+        // Keep the oldChannelId for later
+        var oldChannelId = tempChannel.ChannelId;
+
         try
         {
             var fundingAmount = tempChannel.LocalBalance + tempChannel.RemoteBalance;
@@ -179,9 +183,14 @@ public class AcceptChannel1MessageHandler : IChannelMessageHandler<AcceptChannel
                 tempChannel.ChangeAddress = fundingTransactionModel.ChangeAddress;
 
             // Create a new channelId
-            var oldChannelId = tempChannel.ChannelId;
             tempChannel.UpdateChannelId(
                 _channelIdFactory.CreateV1(fundingOutput.TransactionId.Value, fundingOutput.Index.Value));
+
+            // Check if the channel already exists in the database (it never should)
+            var existingChannel = await _unitOfWork.ChannelDbRepository.GetByIdAsync(tempChannel.ChannelId);
+            if (existingChannel is not null)
+                throw new ChannelErrorException("Channel already exists in the database", tempChannel.ChannelId,
+                                                "Sorry, we had an internal error");
 
             // Register the channel with the signer
             _lightningSigner.RegisterChannel(tempChannel.ChannelId, tempChannel.GetSigningInfo());
@@ -201,19 +210,13 @@ public class AcceptChannel1MessageHandler : IChannelMessageHandler<AcceptChannel
             tempChannel.UpdateLastSentSignature(ourSignature);
             tempChannel.UpdateState(ChannelState.V1FundingCreated);
 
-            // Save to the database
-            await PersistChannelAsync(tempChannel);
-
             // Create the funding created message
             var fundingCreatedMessage =
                 _messageFactory.CreateFundingCreatedMessage(oldChannelId, fundingOutput.TransactionId.Value,
                                                             fundingOutput.Index.Value, ourSignature);
 
-            // Add the channel to the dictionary
-            _channelMemoryRepository.AddChannel(tempChannel);
-
-            // Remove the temporary channel
-            _channelMemoryRepository.RemoveTemporaryChannel(peerPubKey, oldChannelId);
+            // Upgrade the channel in the dictionary
+            _channelMemoryRepository.UpgradeChannel(oldChannelId, tempChannel);
 
             // Update the locked utxos
             _utxoMemoryRepository.UpgradeChannelIdOnLockedUtxos(oldChannelId, tempChannel.ChannelId);
@@ -222,32 +225,20 @@ public class AcceptChannel1MessageHandler : IChannelMessageHandler<AcceptChannel
         }
         catch (Exception e)
         {
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("Forgetting channel {channelId}", tempChannel.ChannelId);
+
+            if (tempChannel.ChannelId != oldChannelId)
+            {
+                if (!_channelMemoryRepository.TryRemoveTemporaryChannel(tempChannel.RemoteNodeId,
+                                                                        tempChannel.ChannelId))
+                    _logger.LogWarning("Unable to remove temporary channel with id {channelId} for peer {peerPubKey}",
+                                       tempChannel.ChannelId, peerPubKey);
+                else if (!_channelMemoryRepository.TryRemoveChannel(tempChannel.ChannelId))
+                    _logger.LogWarning("Unable to remove channel with id {channelId}", tempChannel.ChannelId);
+            }
+
             throw new ChannelErrorException("Error creating commitment transaction", e);
-        }
-    }
-
-    /// <summary>
-    /// Persists a channel to the database using a scoped Unit of Work
-    /// </summary>
-    private async Task PersistChannelAsync(ChannelModel channel)
-    {
-        try
-        {
-            // Check if the channel already exists
-            var existingChannel = await _unitOfWork.ChannelDbRepository.GetByIdAsync(channel.ChannelId);
-            if (existingChannel is not null)
-                throw new ChannelWarningException("Channel already exists", channel.ChannelId,
-                                                  "This channel is already in our database");
-
-            await _unitOfWork.ChannelDbRepository.AddAsync(channel);
-            await _unitOfWork.SaveChangesAsync();
-
-            _logger.LogDebug("Successfully persisted channel {ChannelId} to database", channel.ChannelId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to persist channel {ChannelId} to database", channel.ChannelId);
-            throw;
         }
     }
 }

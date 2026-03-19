@@ -6,9 +6,7 @@ public sealed class OpenChannelPrinter : IPrinter<OpenChannelIpcResponse>
 {
     public void Print(OpenChannelIpcResponse item)
     {
-        Console.WriteLine("Channel opened:");
-        Console.WriteLine("  Tx Id:     {0}", Convert.ToHexString(item.TxId).ToLowerInvariant());
-        Console.WriteLine("  Index:     {0}", item.Index);
-        Console.WriteLine("  ChannelId: {0}", item.ChannelId);
+        Console.WriteLine("Opening Channel: {0}", item.ChannelId);
+        Console.WriteLine("Peer accepted our Channel. Sending funding data to Peer.");
     }
 }

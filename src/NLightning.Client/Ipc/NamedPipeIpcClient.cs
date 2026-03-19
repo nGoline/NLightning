@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.IO.Pipes;
 using MessagePack;
+using NLightning.Domain.Channels.ValueObjects;
 
 namespace NLightning.Client.Ipc;
 
@@ -173,6 +174,33 @@ public sealed class NamedPipeIpcClient : IAsyncDisposable
         var respEnv = await SendAsync(env, ct);
         if (respEnv.Kind != IpcEnvelopeKind.Error)
             return MessagePackSerializer.Deserialize<OpenChannelIpcResponse>(respEnv.Payload, cancellationToken: ct);
+
+        var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
+        throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
+    }
+
+    public async Task<OpenChannelSubscriptionIpcResponse> OpenChannelSubscriptionAsync(
+        ChannelId channelId, CancellationToken ct = default)
+    {
+        var req = new OpenChannelSubscriptionIpcRequest
+        {
+            ChannelId = channelId
+        };
+        var payload = MessagePackSerializer.Serialize(req, cancellationToken: ct);
+        var env = new IpcEnvelope
+        {
+            Version = 1,
+            Command = ClientCommand.OpenChannelSubscription,
+            CorrelationId = Guid.NewGuid(),
+            AuthToken = await GetAuthTokenAsync(ct),
+            Payload = payload,
+            Kind = 0
+        };
+
+        var respEnv = await SendAsync(env, ct);
+        if (respEnv.Kind != IpcEnvelopeKind.Error)
+            return MessagePackSerializer.Deserialize<OpenChannelSubscriptionIpcResponse>(
+                respEnv.Payload, cancellationToken: ct);
 
         var err = MessagePackSerializer.Deserialize<IpcError>(respEnv.Payload, cancellationToken: ct);
         throw new InvalidOperationException($"IPC error {err.Code}: {err.Message}");
