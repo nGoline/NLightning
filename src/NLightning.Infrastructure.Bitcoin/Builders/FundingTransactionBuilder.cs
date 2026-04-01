@@ -34,8 +34,9 @@ public class FundingTransactionBuilder : IFundingTransactionBuilder
 
         var totalInputAmount = coins.Sum(x => x.Amount);
 
-        _logger.LogTrace("Building funding transaction with {UtxoCount} UTXOs for amount {FundingAmount}",
-                         coins.Length, transaction.FundingOutput.Amount);
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("Building funding transaction with {UtxoCount} UTXOs for amount {FundingAmount}",
+                             coins.Length, transaction.FundingOutput.Amount);
 
         // Create a new Bitcoin transaction
         var tx = Transaction.Create(_network);
@@ -65,7 +66,8 @@ public class FundingTransactionBuilder : IFundingTransactionBuilder
         transaction.FundingOutput.TransactionId = tx.GetHash().ToBytes();
         transaction.FundingOutput.Index = 0;
 
-        _logger.LogInformation("Built funding transaction {TxId} with funding output at index 0", tx.GetHash());
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Built funding transaction {TxId} with funding output at index 0", tx.GetHash());
 
         // Return as SignedTransaction (note: needs to be signed by the signer afterwards)
         return new SignedTransaction(tx.GetHash().ToBytes(), tx.ToBytes());

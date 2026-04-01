@@ -52,26 +52,30 @@ public class OpenChannelClientSubscriptionHandler :
         _channelId = request.ChannelId;
 
         if (!_channelMemoryRepository.TryGetChannel(_channelId, out var channel))
-        {
-            if (!_channelMemoryRepository.TryGetChannel(_channelId, out channel))
-                throw new ClientException(ErrorCodes.InvalidChannel, $"Channel with Id {_channelId} not found");
-        }
+            throw new ClientException(ErrorCodes.InvalidChannel, $"Channel with Id {_channelId} not found");
 
         var peer = _peerManager.GetPeer(channel.RemoteNodeId) ?? throw new ClientException(ErrorCodes.InvalidOperation,
-                                      $"Peer with NodeId {channel.RemoteNodeId} is not connected");
-        var lockedUtxos = _utxoMemoryRepository.GetLockedUtxosForChannel(_channelId);
-        if (lockedUtxos.Count == 0)
-            throw new ClientException(ErrorCodes.InvalidOperation,
-                                      $"No locked UTXOs found for channel {_channelId}");
+                       $"Peer with NodeId {channel.RemoteNodeId} is not connected");
 
         // Create a task completion source for the response
         var tsc = new TaskCompletionSource<OpenChannelClientSubscriptionResponse>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
+        // If it's in a state we consider Open, return immediately
+        if (channel.State is ChannelState.ReadyForUs or ChannelState.ReadyForThem or ChannelState.Open)
+        {
+            return new OpenChannelClientSubscriptionResponse(channel.ChannelId)
+            {
+                ChannelState = ChannelState.ReadyForUs,
+                TxId = channel.FundingOutput?.TransactionId,
+                Index = channel.FundingOutput?.Index
+            };
+        }
+
         // Check if the channel is already in a state we care about
-        var shouldPersistChannel = channel.State is ChannelState.V1FundingSigned
-                                                 or ChannelState.ReadyForUs
-                                                 or ChannelState.ReadyForThem;
+        var lockedUtxos = _utxoMemoryRepository.GetLockedUtxosForChannel(_channelId);
+        if (channel.State is not ChannelState.V1FundingSigned && lockedUtxos.Count == 0)
+            throw new ClientException(ErrorCodes.InvalidOperation, $"No locked UTXOs found for channel {_channelId}");
 
         try
         {
@@ -88,8 +92,14 @@ public class OpenChannelClientSubscriptionHandler :
         }
         catch
         {
-            if (!shouldPersistChannel)
-                _utxoMemoryRepository.ReturnUtxosNotSpentOnChannel(request.ChannelId);
+            if (!_channelMemoryRepository.TryGetChannel(_channelId, out channel)
+             || channel.State is ChannelState.ReadyForUs
+                              or ChannelState.ReadyForThem
+                              or ChannelState.Open
+                              or ChannelState.V1FundingSigned)
+                throw;
+
+            _utxoMemoryRepository.ReturnUtxosNotSpentOnChannel(request.ChannelId);
 
             throw;
         }
@@ -142,8 +152,13 @@ public class OpenChannelClientSubscriptionHandler :
         }
         else
         {
-            _logger.LogError(args.Exception, "Peer disconnected. Error: {message}", args.Exception.Message);
-            tsc.TrySetException(new ConnectionException("Error opening channel: Peer disconnected", args.Exception));
+            // Get to the bottom of the inner exceptions to fetch the real reason for the disconnection
+            var exception = args.Exception;
+            while (exception.InnerException is not null)
+                exception = exception.InnerException;
+
+            _logger.LogError(args.Exception, "Error opening channel. Error: {message}", exception.Message);
+            tsc.TrySetException(new ChannelErrorException($"Error opening channel: {exception.Message}", exception));
         }
     }
 

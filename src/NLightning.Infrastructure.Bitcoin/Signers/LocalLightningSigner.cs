@@ -390,8 +390,9 @@ public class LocalLightningSigner : ILightningSigner
     /// <inheritdoc />
     public CompactSignature SignChannelTransaction(ChannelId channelId, SignedTransaction unsignedTransaction)
     {
-        _logger.LogTrace("Signing transaction for channel {ChannelId} with TxId {TxId}", channelId,
-                         unsignedTransaction.TxId);
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("Signing transaction for channel {ChannelId} with TxId {TxId}", channelId,
+                             unsignedTransaction.TxId);
 
         if (!_channelSigningInfo.TryGetValue(channelId, out var signingInfo))
             throw new InvalidOperationException($"Channel {channelId} not registered with signer");
@@ -418,8 +419,8 @@ public class LocalLightningSigner : ILightningSigner
             var spentOutput = fundingOutput.ToTxOut();
 
             // Get the signature hash for SegWit
-            var signatureHash = nBitcoinTx.GetSignatureHash(fundingOutput.RedeemScript, signingInfo.FundingOutputIndex,
-                                                            SigHash.All, spentOutput, HashVersion.WitnessV0);
+            var signatureHash = nBitcoinTx.GetSignatureHash(fundingOutput.RedeemScript, 0, SigHash.All, spentOutput,
+                                                            HashVersion.WitnessV0);
 
             // Get the funding private key
             using var fundingPrivateKey = GenerateFundingPrivateKey(signingInfo.ChannelKeyIndex);
@@ -439,8 +440,9 @@ public class LocalLightningSigner : ILightningSigner
     public void ValidateSignature(ChannelId channelId, CompactSignature signature,
                                   SignedTransaction unsignedTransaction)
     {
-        _logger.LogTrace("Validating signature for channel {ChannelId} with TxId {TxId}", channelId,
-                         unsignedTransaction.TxId);
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("Validating signature for channel {ChannelId} with TxId {TxId}", channelId,
+                             unsignedTransaction.TxId);
 
         if (!_channelSigningInfo.TryGetValue(channelId, out var signingInfo))
             throw new SignerException("Channel not registered with signer", channelId, "Internal error");
@@ -485,18 +487,15 @@ public class LocalLightningSigner : ILightningSigner
         {
             // Build the funding output using the channel's signing info
             var fundingOutputInfo = new FundingOutputInfo(signingInfo.FundingSatoshis, signingInfo.LocalFundingPubKey,
-                                                          signingInfo.RemoteFundingPubKey)
-            {
-                TransactionId = signingInfo.FundingTxId,
-                Index = signingInfo.FundingOutputIndex
-            };
+                                                          signingInfo.RemoteFundingPubKey, signingInfo.FundingTxId,
+                                                          signingInfo.FundingOutputIndex);
 
             var fundingOutput = _fundingOutputBuilder.Build(fundingOutputInfo);
             var spentOutput = fundingOutput.ToTxOut();
 
-            var signatureHash = nBitcoinTx.GetSignatureHash(fundingOutput.RedeemScript,
-                                                            signingInfo.FundingOutputIndex, SigHash.All,
-                                                            spentOutput, HashVersion.WitnessV0);
+            var signatureHash =
+                nBitcoinTx.GetSignatureHash(fundingOutput.RedeemScript, 0, SigHash.All, spentOutput,
+                                            HashVersion.WitnessV0);
 
             if (!pubKey.Verify(signatureHash, txSignature))
                 throw new SignerException("Peer signature is invalid", channelId, "Invalid signature provided");

@@ -133,7 +133,7 @@ public class AcceptChannel1MessageHandler : IChannelMessageHandler<AcceptChannel
 
         tempChannel.AddRemoteKeySet(remoteKeySet);
 
-        // Create a new ChannelConfig with the remote provided values
+        // Create a new ChannelConfig with the remote-provided values
         var channelConfig = new ChannelConfig(tempChannel.ChannelConfig.ChannelReserveAmount,
                                               tempChannel.ChannelConfig.FeeRateAmountPerKw,
                                               tempChannel.ChannelConfig.HtlcMinimumAmount,
@@ -142,7 +142,7 @@ public class AcceptChannel1MessageHandler : IChannelMessageHandler<AcceptChannel
                                               tempChannel.ChannelConfig.MaxHtlcAmountInFlight,
                                               tempChannel.ChannelConfig.MinimumDepth,
                                               tempChannel.ChannelConfig.OptionAnchorOutputs,
-                                              payload.DustLimitAmount, tempChannel.ChannelConfig.ToSelfDelay,
+                                              payload.DustLimitAmount, payload.ToSelfDelay,
                                               tempChannel.ChannelConfig.UseScidAlias,
                                               tempChannel.ChannelConfig.LocalUpfrontShutdownScript,
                                               remoteUpfrontShutdownScript);
@@ -202,7 +202,7 @@ public class AcceptChannel1MessageHandler : IChannelMessageHandler<AcceptChannel
             // Build the output and the transactions
             var remoteUnsignedCommitmentTransaction = _commitmentTransactionBuilder.Build(remoteCommitmentTransaction);
 
-            // Sign our remote commitment transaction
+            // Sign their remote commitment transaction
             var ourSignature =
                 _lightningSigner.SignChannelTransaction(tempChannel.ChannelId, remoteUnsignedCommitmentTransaction);
 
