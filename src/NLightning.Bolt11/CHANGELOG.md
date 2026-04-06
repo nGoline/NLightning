@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## v5.0.0
+
+BOLT 11 compliance fix for unknown fallback address versions and updated package URL.
+
+### Fixed
+
+- Fixed `FallbackAddressTaggedField.FromBitReader` to return `null` instead of throwing on unknown witness
+  versions, complying with BOLT 11's requirement to skip `f` fields with unknown versions;
+- Fixed `Invoice.FallbackAddresses` getter to handle a nullable list correctly;
+
+### Changed
+
+- Updated `PackageProjectUrl` to `https://docs.nlightn.ing`;
+
+### Breaking Changes
+
+- Dropped `net8.0` and `net9.0` targets; the library now requires **.NET 10.0** or later;
+
 ## v4.0.5
 
 Fixed an error when decoding `PayeePubKeyTaggedField`.
