@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.0.0
+
+Peer service improvements, warning message propagation, `ChannelIdFactory` extension, and transport hardening.
+
+### Added
+
+- Added `PeerCommunicationService.SendWarningAsync` to send `WarningMessage` to peers on disconnect;
+- Added `PeerService.SendWarningAsync` and `OnAttentionMessageReceived`/`OnExceptionRaised` events;
+- Added `ChannelIdFactory.CreateTemporaryChannelId` for generating random temporary channel IDs;
+- Added `ITcpService.ListeningTo` property exposing active listen endpoints;
+- Added `host` and `port` parameters to `ConnectedPeer` constructor;
+
+### Changed
+
+- `PeerCommunicationService.DisconnectEvent` changed from `EventHandler?` to `EventHandler<Exception?>?`;
+- `PeerCommunicationService.Disconnect` and `PeerService.Disconnect` now accept an optional `Exception` parameter and send an error/warning message before closing;
+- `ITcpService.ConnectToPeerAsync` parameter changed from `PeerAddressInfo` to `PeerAddress`;
+- Updated `libsodium` to `v1.0.21`;
+- Updated `Microsoft.Extensions.Logging.Abstractions` and `Microsoft.Extensions.Options` to `v10.0.5`;
+- Updated `PackageProjectUrl` to `https://docs.nlightn.ing`;
+
+### Breaking Changes
+
+- Dropped `net8.0` and `net9.0` targets; the library now requires **.NET 10.0** or later;
+- `PeerCommunicationService.DisconnectEvent` signature changed from `EventHandler?` to `EventHandler<Exception?>?`;
+- `ITcpService.ConnectToPeerAsync` now takes `PeerAddress` instead of `PeerAddressInfo`;
+- `ConnectedPeer` constructor now requires `host` and `port` parameters;
+
 ## v1.0.3
 
 Fixed an error on `SodiumJsCryptoProvider` where Blazor apps whould be unable to call `Sha256.GetHashAndReset`.

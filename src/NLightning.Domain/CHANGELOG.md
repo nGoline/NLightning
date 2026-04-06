@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.0.0
+
+Major release introducing the Client domain, wallet domain types, channel open validation, and comprehensive interface updates.
+
+### Added
+
+- Added `Client` domain namespace with `INamedPipeIpcService`, `ClientException`, `ErrorCodes`, `ClientCommand`,
+  `OpenChannelClientRequest`, `OpenChannelClientSubscriptionRequest`, `OpenChannelClientResponse`, and
+  `OpenChannelClientSubscriptionResponse`;
+- Added Bitcoin wallet types: `UtxoModel`, `WalletAddressModel`, `AddressType`, `KeyConstants`,
+  `IUtxoDbRepository`, `IUtxoMemoryRepository`, `IWalletAddressesDbRepository`;
+- Added `FundingTransactionModel`, `FundingTransactionModelFactory`, and `IFundingTransactionModelFactory`;
+- Added `WalletMovementEventArgs` for wallet event propagation;
+- Added `IChannelOpenValidator` interface with `ChannelOpenValidator`, `ChannelOpenMandatoryValidationParameters`,
+  and `ChannelOpenOptionalValidationParameters`;
+- Added `ChannelUpdatedEventArgs` and `ChannelUpgradedEventArgs` channel events;
+- Added `NodeConstants` and `AttentionMessageEventArgs` to the node domain;
+- Added `GetDepositP2TrKeyAtIndex` and `GetDepositP2WpkhKeyAtIndex` methods to `ISecureKeyManager`;
+
+### Changed
+
+- Updated `Feature` enum and `FeatureSet` defaults to reflect latest BOLT spec
+  ([lightning/bolts#1310](https://github.com/lightning/bolts/pull/1310)): `OptionDataLossProtect`,
+  `VarOnionOptin`, `OptionStaticRemoteKey`, and `PaymentSecret` are now set as compulsory by default;
+- Simplified `FeatureSet` dependency rules, removing several previously required feature dependencies;
+- `IPeerManager.ConnectToPeerAsync` now returns `Task<PeerModel>` instead of `Task`;
+- `IPeerManager.DisconnectPeer` now accepts an optional `Exception` parameter;
+- `ISecureKeyManager.KeyPath` renamed to `ChannelKeyPath`; `GetNextKey`/`GetKeyAtIndex` renamed to
+  `GetNextChannelKey`/`GetChannelKeyAtIndex`;
+- `LightningMoney.ToString()` now includes the unit by default;
+- Updated `PackageProjectUrl` to `https://docs.nlightn.ing`;
+
+### Fixed
+
+- Fixed `AcceptChannel1Payload.ToSelfDelay` propagation in channel config creation;
+
+### Removed
+
+- Removed `Feature.InitialRoutingSync` (deprecated in latest BOLT spec);
+- Removed `Feature.OptionAnchorOutputs` (superseded by `OptionAnchorsZeroFeeHtlcTx`);
+
+### Breaking Changes
+
+- Dropped `net8.0` and `net9.0` targets; the library now requires **.NET 10.0** or later;
+- `ISecureKeyManager`: `KeyPath` → `ChannelKeyPath`; `GetNextKey`/`GetKeyAtIndex` → `GetNextChannelKey`/`GetChannelKeyAtIndex`;
+- `OpenChannel1Message`: `ChannelTypeTlv` is now required (non-nullable); constructor parameter order changed;
+- `ChannelConfig.ChannelReserveAmount` changed from `LightningMoney?` to `LightningMoney`;
+- `Feature.InitialRoutingSync` and `Feature.OptionAnchorOutputs` removed from the `Feature` enum;
+- `LightningMoney.ToString()` output now includes the unit;
+
 ## v1.1.2
 
 This version removes a Span size check from `BitReader` since the calculations are complex and should be done by the

@@ -1,18 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Version>0.0.4</Version>
+    <Version>1.0.0</Version>
     <Configurations>Debug;Release;Debug.Native;Debug.Wasm;Release.Native;Release.Wasm</Configurations>
   </PropertyGroup>
 
   <PropertyGroup>
     <Description>Bitcoin Infrastructure Library for NLightning</Description>
-    <AssemblyVersion>0.0.4</AssemblyVersion>
-    <FileVersion>0.0.4</FileVersion>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
     <PackageTags>lightning-network,bitcoin,crypto,infrastructure,dotnet,cryptography,cross-platform,libsodium,blazor,webassembly,aot</PackageTags>
     <PackageProjectUrl>https://docs.nlightn.ing/api/NLightning.Infrastructure.Bitcoin.html</PackageProjectUrl>
     <PackageId>NLightning.Infrastructure.Bitcoin</PackageId>
-    <PackageReleaseNotes>Bump version to use `NLightning.Infrastructure@v1.0.3`.</PackageReleaseNotes>
+    <PackageReleaseNotes>Added wallet address management, funding transaction builder, and multi-path key derivation in SecureKeyManager. Contains breaking interface changes. See CHANGELOG.md for details.</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(Configuration.Contains('Debug'))">
