@@ -2,13 +2,19 @@ namespace NLightning.Infrastructure.Bitcoin.Wallet.Interfaces;
 
 using Domain.Bitcoin.Events;
 using Domain.Bitcoin.ValueObjects;
+using Domain.Bitcoin.Wallet.Models;
 using Domain.Channels.ValueObjects;
 
 public interface IBlockchainMonitor
 {
-    Task WatchTransactionAsync(ChannelId channelId, TxId txId, uint requiredDepth);
+    uint LastProcessedBlockHeight { get; }
     event EventHandler<NewBlockEventArgs> OnNewBlockDetected;
     event EventHandler<TransactionConfirmedEventArgs> OnTransactionConfirmed;
+    event EventHandler<WalletMovementEventArgs>? OnWalletMovementDetected;
+
+    Task PublishAndWatchTransactionAsync(ChannelId channelId, SignedTransaction signedTransaction, uint requiredDepth);
+    Task WatchTransactionAsync(ChannelId channelId, TxId txId, uint requiredDepth);
+    void WatchBitcoinAddress(WalletAddressModel walletAddress);
 
     /// <summary>
     /// Starts a background task to periodically refresh the fee rate

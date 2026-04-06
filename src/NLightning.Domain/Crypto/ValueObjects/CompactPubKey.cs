@@ -36,7 +36,7 @@ public readonly struct CompactPubKey : IEquatable<CompactPubKey>
         return left.Equals(right);
     }
 
-    public override string ToString() => Convert.ToHexString(_value).ToLowerInvariant();
+    public override string ToString() => Convert.ToHexStringLower(_value);
 
     public bool Equals(CompactPubKey other)
     {

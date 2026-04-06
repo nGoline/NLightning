@@ -20,19 +20,16 @@ public sealed class OpenChannel1Message : BaseChannelMessage
     public new OpenChannel1Payload Payload { get => (OpenChannel1Payload)base.Payload; }
 
     public UpfrontShutdownScriptTlv? UpfrontShutdownScriptTlv { get; }
-    public ChannelTypeTlv? ChannelTypeTlv { get; }
+    public ChannelTypeTlv ChannelTypeTlv { get; }
 
-    public OpenChannel1Message(OpenChannel1Payload payload, UpfrontShutdownScriptTlv? upfrontShutdownScriptTlv = null,
-                               ChannelTypeTlv? channelTypeTlv = null)
+    public OpenChannel1Message(OpenChannel1Payload payload, ChannelTypeTlv channelTypeTlv,
+                               UpfrontShutdownScriptTlv? upfrontShutdownScriptTlv = null)
         : base(MessageTypes.OpenChannel, payload)
     {
         UpfrontShutdownScriptTlv = upfrontShutdownScriptTlv;
         ChannelTypeTlv = channelTypeTlv;
 
-        if (UpfrontShutdownScriptTlv is not null || ChannelTypeTlv is not null)
-        {
-            Extension = new TlvStream();
-            Extension.Add(UpfrontShutdownScriptTlv, ChannelTypeTlv);
-        }
+        Extension = new TlvStream();
+        Extension.Add(UpfrontShutdownScriptTlv, ChannelTypeTlv);
     }
 }

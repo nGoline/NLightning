@@ -144,12 +144,12 @@ public class FundingCreatedMessageHandlerTests
 
         // Setup LightningSigner
         _mockLightningSigner
-           .Setup(x => x.SignTransaction(It.IsAny<ChannelId>(), It.IsAny<SignedTransaction>()))
+           .Setup(x => x.SignChannelTransaction(It.IsAny<ChannelId>(), It.IsAny<SignedTransaction>()))
            .Returns(localSignature);
 
         // Setup MessageFactory
         mockMessageFactory
-           .Setup(x => x.CreatedFundingSignedMessage(It.IsAny<ChannelId>(), It.IsAny<CompactSignature>()))
+           .Setup(x => x.CreateFundingSignedMessage(It.IsAny<ChannelId>(), It.IsAny<CompactSignature>()))
            .Returns(new FundingSignedMessage(new FundingSignedPayload(_newChannelId, localSignature)));
 
         // Setup ChannelDbRepository
@@ -190,8 +190,8 @@ public class FundingCreatedMessageHandlerTests
         Assert.IsType<FundingSignedMessage>(result);
 
         // Verify transaction ID and output index were set on the channel
-        Assert.Equal(_fundingTxId, _channel.FundingOutput.TransactionId);
-        Assert.Equal(_fundingOutputIndex, _channel.FundingOutput.Index);
+        Assert.Equal(_fundingTxId, _channel.FundingOutput?.TransactionId);
+        Assert.Equal(_fundingOutputIndex, _channel.FundingOutput?.Index);
 
         // Verify channel ID was updated
         Assert.Equal(_channel.ChannelId, _newChannelId);
@@ -208,13 +208,13 @@ public class FundingCreatedMessageHandlerTests
 
         // Verify our signature was generated
         _mockLightningSigner.Verify(
-            x => x.SignTransaction(_newChannelId, It.IsAny<SignedTransaction>()),
+            x => x.SignChannelTransaction(_newChannelId, It.IsAny<SignedTransaction>()),
             Times.Once);
 
         // Verify channel state was updated
         Assert.Equal(ChannelState.V1FundingSigned, _channel.State);
 
-        // Verify channel was persisted
+        // Verify if the channel was persisted
         _mockChannelDbRepository.Verify(x => x.AddAsync(_channel), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
 
@@ -225,7 +225,7 @@ public class FundingCreatedMessageHandlerTests
 
         // Verify channel management operations
         _mockChannelMemoryRepository.Verify(x => x.AddChannel(_channel), Times.Once);
-        _mockChannelMemoryRepository.Verify(x => x.RemoveTemporaryChannel(_peerPubKey, _tempChannelId), Times.Once);
+        _mockChannelMemoryRepository.Verify(x => x.TryRemoveTemporaryChannel(_peerPubKey, _tempChannelId), Times.Once);
     }
 
     [Fact]

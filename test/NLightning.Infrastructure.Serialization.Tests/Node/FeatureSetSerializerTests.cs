@@ -15,22 +15,16 @@ public class FeatureSetSerializerTests
     }
 
     #region Serialization
+
     [Theory]
+    [InlineData(Feature.OptionSimpleClose, false, 8)]
+    [InlineData(Feature.OptionSimpleClose, true, 8)]
     [InlineData(Feature.OptionZeroconf, false, 7)]
     [InlineData(Feature.OptionZeroconf, true, 7)]
     [InlineData(Feature.OptionScidAlias, false, 6)]
     [InlineData(Feature.OptionScidAlias, true, 6)]
-    [InlineData(Feature.OptionOnionMessages, false, 5)]
-    [InlineData(Feature.OptionOnionMessages, true, 5)]
-    [InlineData(Feature.OptionDualFund, false, 4)]
-    [InlineData(Feature.OptionDualFund, true, 4)]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, false, 3)]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, true, 3)]
-    [InlineData(Feature.OptionStaticRemoteKey, false, 2)]
-    [InlineData(Feature.OptionStaticRemoteKey, true, 2)]
-    [InlineData(Feature.GossipQueries, false, 1)]
-    [InlineData(Feature.GossipQueries, true, 1)]
-    public async Task Given_Features_When_Serialize_Then_BytesAreTrimmed(Feature feature, bool isCompulsory, int expectedLength)
+    public async Task Given_Features_When_Serialize_Then_BytesAreTrimmed(
+        Feature feature, bool isCompulsory, int expectedLength)
     {
         // Arrange
         var features = new FeatureSet();
@@ -50,21 +44,14 @@ public class FeatureSetSerializerTests
     }
 
     [Theory]
-    [InlineData(Feature.OptionZeroconf, false, 7)]
-    [InlineData(Feature.OptionZeroconf, true, 7)]
+    [InlineData(Feature.OptionSimpleClose, false, 8)]
+    [InlineData(Feature.OptionSimpleClose, true, 8)]
+    [InlineData(Feature.OptionPaymentMetadata, false, 7)]
+    [InlineData(Feature.OptionPaymentMetadata, true, 6)]
     [InlineData(Feature.OptionScidAlias, false, 6)]
     [InlineData(Feature.OptionScidAlias, true, 6)]
-    [InlineData(Feature.OptionOnionMessages, false, 5)]
-    [InlineData(Feature.OptionOnionMessages, true, 5)]
-    [InlineData(Feature.OptionDualFund, false, 4)]
-    [InlineData(Feature.OptionDualFund, true, 4)]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, false, 3)]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, true, 3)]
-    [InlineData(Feature.OptionStaticRemoteKey, false, 2)]
-    [InlineData(Feature.OptionStaticRemoteKey, true, 2)]
-    [InlineData(Feature.GossipQueries, false, 1)]
-    [InlineData(Feature.GossipQueries, true, 1)]
-    public async Task Given_Features_When_SerializeWithoutLength_Then_LengthIsKnown(Feature feature, bool isCompulsory, int expectedLength)
+    public async Task Given_Features_When_SerializeWithoutLength_Then_LengthIsKnown(
+        Feature feature, bool isCompulsory, int expectedLength)
     {
         // Arrange
         var features = new FeatureSet();
@@ -83,27 +70,25 @@ public class FeatureSetSerializerTests
     }
 
     [Theory]
-    [InlineData(Feature.OptionZeroconf, false, new byte[] { 8, 128, 0, 0, 0, 0, 0 })]
-    [InlineData(Feature.OptionZeroconf, true, new byte[] { 4, 64, 0, 0, 0, 0, 0 })]
-    [InlineData(Feature.OptionScidAlias, false, new byte[] { 128, 0, 0, 0, 0, 0 })]
-    [InlineData(Feature.OptionScidAlias, true, new byte[] { 64, 0, 0, 0, 0, 0 })]
-    [InlineData(Feature.OptionOnionMessages, false, new byte[] { 128, 0, 0, 0, 0 })]
-    [InlineData(Feature.OptionOnionMessages, true, new byte[] { 64, 0, 0, 0, 0 })]
-    [InlineData(Feature.OptionDualFund, false, new byte[] { 32, 0, 0, 0 })]
-    [InlineData(Feature.OptionDualFund, true, new byte[] { 16, 0, 0, 0 })]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, false, new byte[] { 128, 32, 0 })]
-    [InlineData(Feature.OptionAnchorsZeroFeeHtlcTx, true, new byte[] { 64, 16, 0 })]
-    [InlineData(Feature.OptionStaticRemoteKey, false, new byte[] { 32, 0 })]
-    [InlineData(Feature.OptionStaticRemoteKey, true, new byte[] { 16, 0 })]
-    [InlineData(Feature.GossipQueries, false, new byte[] { 128 })]
-    [InlineData(Feature.GossipQueries, true, new byte[] { 64 })]
-    public async Task Given_Features_When_Serialize_Then_BytesAreKnown(Feature feature, bool isCompulsory, byte[] expected)
+    [InlineData(Feature.OptionZeroconf, false, new byte[] { 8, 144, 0, 0, 0, 81, 1 })]
+    [InlineData(Feature.OptionZeroconf, true, new byte[] { 4, 80, 0, 0, 0, 81, 1 })]
+    [InlineData(Feature.OptionScidAlias, false, new byte[] { 144, 0, 0, 0, 81, 1 })]
+    [InlineData(Feature.OptionScidAlias, true, new byte[] { 80, 0, 0, 0, 81, 1 })]
+    [InlineData(Feature.OptionOnionMessages, false, new byte[] { 16, 128, 0, 0, 81, 1 })]
+    [InlineData(Feature.OptionOnionMessages, true, new byte[] { 16, 64, 0, 0, 81, 1 })]
+    [InlineData(Feature.OptionDualFund, false, new byte[] { 16, 0, 32, 0, 81, 1 })]
+    [InlineData(Feature.OptionDualFund, true, new byte[] { 16, 0, 16, 0, 81, 1 })]
+    [InlineData(Feature.OptionAnchors, false, new byte[] { 16, 0, 0, 128, 81, 1 })]
+    [InlineData(Feature.OptionAnchors, true, new byte[] { 16, 0, 0, 64, 81, 1 })]
+    [InlineData(Feature.GossipQueries, false, new byte[] { 16, 0, 0, 0, 81, 129 })]
+    [InlineData(Feature.GossipQueries, true, new byte[] { 16, 0, 0, 0, 81, 65 })]
+    public async Task Given_Features_When_Serialize_Then_BytesAreKnown(Feature feature, bool isCompulsory,
+                                                                       byte[] expected)
     {
         // Arrange
         var features = new FeatureSet();
+        // Set tested feature
         features.SetFeature(feature, isCompulsory);
-        // Clean default features
-        features.SetFeature(Feature.VarOnionOptin, false, false);
 
         using var stream = new MemoryStream();
 
@@ -120,10 +105,13 @@ public class FeatureSetSerializerTests
     {
         // Arrange
         var features = new FeatureSet();
-        // Sets bit 0
-        features.SetFeature(Feature.OptionDataLossProtect, true);
+        // Set bit 1
+        features.SetFeature(Feature.OptionDataLossProtect, false);
         // Clean default features
-        features.SetFeature(Feature.VarOnionOptin, false, false);
+        features.SetFeature(Feature.VarOnionOptin, true, false);
+        features.SetFeature(Feature.OptionStaticRemoteKey, true, false);
+        features.SetFeature(Feature.PaymentSecret, true, false);
+        features.SetFeature(Feature.OptionChannelType, true, false);
 
         using var stream = new MemoryStream();
 
@@ -132,7 +120,7 @@ public class FeatureSetSerializerTests
         var bytes = stream.ToArray();
 
         // Assert
-        Assert.Equal([1], bytes);
+        Assert.Equal([2], bytes);
     }
 
     [Fact]
@@ -140,10 +128,11 @@ public class FeatureSetSerializerTests
     {
         // Arrange
         var features = new FeatureSet();
-        // Sets bit 0
-        features.SetFeature(Feature.OptionSupportLargeChannel, true);
-        // Clean default features
-        features.SetFeature(Feature.VarOnionOptin, false, false);
+        // Clean default features except for bit 0
+        features.SetFeature(Feature.VarOnionOptin, true, false);
+        features.SetFeature(Feature.OptionStaticRemoteKey, true, false);
+        features.SetFeature(Feature.PaymentSecret, true, false);
+        features.SetFeature(Feature.OptionChannelType, true, false);
 
         using var stream = new MemoryStream();
 
@@ -154,9 +143,11 @@ public class FeatureSetSerializerTests
         // Assert
         Assert.Equal(2, bytes.Length);
     }
+
     #endregion
 
     #region Deserialization
+
     [Theory]
     [InlineData(new byte[] { 0, 7, 8, 128, 0, 0, 0, 0, 0 }, false, Feature.OptionZeroconf)]
     [InlineData(new byte[] { 0, 7, 4, 64, 0, 0, 0, 0, 0 }, true, Feature.OptionZeroconf)]
@@ -166,13 +157,14 @@ public class FeatureSetSerializerTests
     [InlineData(new byte[] { 0, 5, 64, 0, 0, 0, 0 }, true, Feature.OptionOnionMessages)]
     [InlineData(new byte[] { 0, 4, 32, 0, 0, 0 }, false, Feature.OptionDualFund)]
     [InlineData(new byte[] { 0, 4, 16, 0, 0, 0 }, true, Feature.OptionDualFund)]
-    [InlineData(new byte[] { 0, 3, 128, 32, 0 }, false, Feature.OptionAnchorsZeroFeeHtlcTx)]
-    [InlineData(new byte[] { 0, 3, 64, 16, 0 }, true, Feature.OptionAnchorsZeroFeeHtlcTx)]
+    [InlineData(new byte[] { 0, 3, 128, 32, 0 }, false, Feature.OptionAnchors)]
+    [InlineData(new byte[] { 0, 3, 64, 16, 0 }, true, Feature.OptionAnchors)]
     [InlineData(new byte[] { 0, 2, 32, 0 }, false, Feature.OptionStaticRemoteKey)]
     [InlineData(new byte[] { 0, 2, 16, 0 }, true, Feature.OptionStaticRemoteKey)]
     [InlineData(new byte[] { 0, 1, 128 }, false, Feature.GossipQueries)]
     [InlineData(new byte[] { 0, 1, 64 }, true, Feature.GossipQueries)]
-    public async Task Given_Buffer_When_Deserialize_Then_FeatureIsSet(byte[] buffer, bool isCompulsory, Feature expected)
+    public async Task Given_Buffer_When_Deserialize_Then_FeatureIsSet(byte[] buffer, bool isCompulsory,
+                                                                      Feature expected)
     {
         // Arrange
         using var stream = new MemoryStream(buffer);
@@ -212,5 +204,6 @@ public class FeatureSetSerializerTests
         Assert.False(features.IsFeatureSet(Feature.OptionZeroconf, false));
         Assert.False(features.IsFeatureSet(Feature.OptionZeroconf, true));
     }
+
     #endregion
 }

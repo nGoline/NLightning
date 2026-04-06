@@ -34,7 +34,7 @@ public class InitMessageTests
         var stream =
             new MemoryStream(
                 Convert.FromHexString(
-                    "000202000002020001206FE28C0AB6F1B372C1A6A246AE63F74F931E8365E15A089C68D6190000000000"));
+                    "00025101000610000000510101206fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000"));
 
         // Act
         var initMessage = await _initMessageTypeSerializer.DeserializeAsync(stream);
@@ -53,7 +53,7 @@ public class InitMessageTests
     {
         // Arrange
         var expectedPayload = new InitPayload(new FeatureSet());
-        var stream = new MemoryStream(Convert.FromHexString("0002020000020200"));
+        var stream = new MemoryStream(Convert.FromHexString("000251010006100000005101"));
 
         // Act
         var initMessage = await _initMessageTypeSerializer.DeserializeAsync(stream);
@@ -83,7 +83,7 @@ public class InitMessageTests
         var stream = new MemoryStream();
         var expectedBytes =
             Convert.FromHexString(
-                "000202000002020001206FE28C0AB6F1B372C1A6A246AE63F74F931E8365E15A089C68D6190000000000");
+                "00025101000610000000510101206fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000");
 
         // Act
         await _initMessageTypeSerializer.SerializeAsync(message, stream);
@@ -101,7 +101,7 @@ public class InitMessageTests
         // Arrange
         var message = new InitMessage(new InitPayload(new FeatureSet()));
         var stream = new MemoryStream();
-        var expectedBytes = Convert.FromHexString("0002020000020200");
+        var expectedBytes = Convert.FromHexString("000251010006100000005101");
 
         // Act
         await _initMessageTypeSerializer.SerializeAsync(message, stream);

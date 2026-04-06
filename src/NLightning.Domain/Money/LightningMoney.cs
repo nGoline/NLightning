@@ -439,7 +439,7 @@ public class LightningMoney
     /// <returns></returns>
     public override string ToString()
     {
-        return ToString(false);
+        return ToString(true);
     }
 
     /// <summary>

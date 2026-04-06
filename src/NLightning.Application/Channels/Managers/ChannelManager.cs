@@ -95,6 +95,15 @@ public class ChannelManager : IChannelManager
                 return await GetChannelMessageHandler<OpenChannel1Message>(scope)
                           .HandleAsync(openChannel1Message, currentState, negotiatedFeatures, peerPubKey);
 
+            case MessageTypes.AcceptChannel:
+                // Handle the accept channel message
+                var acceptChannel1Message = message as AcceptChannel1Message
+                                         ?? throw new ChannelErrorException(
+                                                "Error boxing message to AcceptChannel1Message",
+                                                "Sorry, we had an internal error");
+                return await GetChannelMessageHandler<AcceptChannel1Message>(scope)
+                          .HandleAsync(acceptChannel1Message, currentState, negotiatedFeatures, peerPubKey);
+
             case MessageTypes.FundingCreated:
                 // Handle the funding-created message
                 var fundingCreatedMessage = message as FundingCreatedMessage
@@ -111,6 +120,16 @@ public class ChannelManager : IChannelManager
                                                                           "Sorry, we had an internal error");
                 return await GetChannelMessageHandler<ChannelReadyMessage>(scope)
                           .HandleAsync(channelReadyMessage, currentState, negotiatedFeatures, peerPubKey);
+
+            case MessageTypes.FundingSigned:
+                // Handle funding signed message
+                var fundingSignedMessage = message as FundingSignedMessage
+                                        ?? throw new ChannelErrorException(
+                                               "Error boxing message to FundingSignedMessage",
+                                               "Sorry, we had an internal error");
+                return await GetChannelMessageHandler<FundingSignedMessage>(scope)
+                          .HandleAsync(fundingSignedMessage, currentState, negotiatedFeatures, peerPubKey);
+
             default:
                 throw new ChannelErrorException("Unknown message type", "Sorry, we had an internal error");
         }
@@ -143,7 +162,7 @@ public class ChannelManager : IChannelManager
             await unitOfWork.SaveChangesAsync();
 
             // Remove from dictionaries
-            _channelMemoryRepository.RemoveChannel(channel.ChannelId);
+            _channelMemoryRepository.TryRemoveChannel(channel.ChannelId);
 
             _logger.LogDebug("Successfully persisted channel {ChannelId} to database", channel.ChannelId);
         }
@@ -275,7 +294,7 @@ public class ChannelManager : IChannelManager
         // Check if the transaction is a funding transaction for any channel
         if (!_channelMemoryRepository.TryGetChannel(channelId, out var channel))
         {
-            // Channel not found in memory, check the database
+            // Channel isn't found in memory, check the database
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             channel = uow.ChannelDbRepository.GetByIdAsync(channelId).GetAwaiter().GetResult();
             if (channel is null)
@@ -288,7 +307,7 @@ public class ChannelManager : IChannelManager
             _channelMemoryRepository.AddChannel(channel);
         }
 
-        var fundingConfirmedHandler = scope.ServiceProvider.GetRequiredService<FundingConfirmedHandler>();
+        var fundingConfirmedHandler = scope.ServiceProvider.GetRequiredService<FundingConfirmedMessageHandler>();
 
         // If we get a response, raise the event with the message
         fundingConfirmedHandler.OnMessageReady += (_, message) =>

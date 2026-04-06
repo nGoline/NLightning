@@ -64,6 +64,7 @@ public readonly struct ChannelId : IEquatable<ChannelId>, IValueObject
 
     public static implicit operator byte[](ChannelId c) => c._value;
     public static implicit operator ReadOnlyMemory<byte>(ChannelId c) => c._value;
+    public static implicit operator ReadOnlySpan<byte>(ChannelId c) => c._value;
     public static implicit operator ChannelId(byte[] value) => new(value);
     public static implicit operator ChannelId(Span<byte> value) => new(value);
 

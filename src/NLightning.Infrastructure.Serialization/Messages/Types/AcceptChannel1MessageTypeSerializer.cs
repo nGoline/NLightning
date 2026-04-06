@@ -1,13 +1,13 @@
 using System.Runtime.Serialization;
-using NLightning.Domain.Protocol.Interfaces;
-using NLightning.Domain.Serialization.Interfaces;
 
 namespace NLightning.Infrastructure.Serialization.Messages.Types;
 
 using Domain.Protocol.Constants;
+using Domain.Protocol.Interfaces;
 using Domain.Protocol.Messages;
 using Domain.Protocol.Payloads;
 using Domain.Protocol.Tlv;
+using Domain.Serialization.Interfaces;
 using Exceptions;
 using Interfaces;
 
@@ -58,12 +58,9 @@ public class AcceptChannel1MessageTypeSerializer : IMessageTypeSerializer<Accept
 
             // Deserialize extension
             if (stream.Position >= stream.Length)
-                return new AcceptChannel1Message(payload);
+                throw new SerializationException("Required extension is missing");
 
-            var extension = await _tlvStreamSerializer.DeserializeAsync(stream);
-            if (extension is null)
-                return new AcceptChannel1Message(payload);
-
+            var extension = await _tlvStreamSerializer.DeserializeAsync(stream) ?? throw new SerializationException("Required extension is missing");
             UpfrontShutdownScriptTlv? upfrontShutdownScriptTlv = null;
             if (extension.TryGetTlv(TlvConstants.UpfrontShutdownScript, out var baseUpfrontShutdownTlv))
             {
@@ -73,16 +70,15 @@ public class AcceptChannel1MessageTypeSerializer : IMessageTypeSerializer<Accept
                 upfrontShutdownScriptTlv = tlvConverter.ConvertFromBase(baseUpfrontShutdownTlv!);
             }
 
-            ChannelTypeTlv? channelTypeTlv = null;
-            if (extension.TryGetTlv(TlvConstants.ChannelType, out var baseChannelTypeTlv))
-            {
-                var tlvConverter =
-                    _tlvConverterFactory.GetConverter<ChannelTypeTlv>()
-                 ?? throw new SerializationException($"No serializer found for tlv type {nameof(ChannelTypeTlv)}");
-                channelTypeTlv = tlvConverter.ConvertFromBase(baseChannelTypeTlv!);
-            }
+            if (!extension.TryGetTlv(TlvConstants.ChannelType, out var baseChannelTypeTlv))
+                throw new SerializationException("Required extension is missing");
 
-            return new AcceptChannel1Message(payload, upfrontShutdownScriptTlv, channelTypeTlv);
+            var channelTypeTlvConverter =
+                _tlvConverterFactory.GetConverter<ChannelTypeTlv>()
+             ?? throw new SerializationException($"No serializer found for tlv type {nameof(ChannelTypeTlv)}");
+            var channelTypeTlv = channelTypeTlvConverter.ConvertFromBase(baseChannelTypeTlv!);
+
+            return new AcceptChannel1Message(payload, channelTypeTlv, upfrontShutdownScriptTlv);
         }
         catch (SerializationException e)
         {

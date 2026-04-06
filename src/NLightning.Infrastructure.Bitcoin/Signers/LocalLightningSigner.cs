@@ -2,13 +2,15 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
 using NBitcoin.Crypto;
-using NLightning.Domain.Bitcoin.Transactions.Outputs;
 
 namespace NLightning.Infrastructure.Bitcoin.Signers;
 
 using Builders;
+using Domain.Bitcoin.Enums;
 using Domain.Bitcoin.Interfaces;
+using Domain.Bitcoin.Transactions.Outputs;
 using Domain.Bitcoin.ValueObjects;
+using Domain.Bitcoin.Wallet.Models;
 using Domain.Channels.ValueObjects;
 using Domain.Crypto.Constants;
 using Domain.Crypto.ValueObjects;
@@ -26,20 +28,23 @@ public class LocalLightningSigner : ILightningSigner
     private const int PerCommitmentSeedDerivationIndex = 5; // m/5' is the per-commitment seed
 
     private readonly ISecureKeyManager _secureKeyManager;
+    private readonly IUtxoMemoryRepository _utxoMemoryRepository;
     private readonly IFundingOutputBuilder _fundingOutputBuilder;
     private readonly IKeyDerivationService _keyDerivationService;
     private readonly ConcurrentDictionary<ChannelId, ChannelSigningInfo> _channelSigningInfo = new();
     private readonly ILogger<LocalLightningSigner> _logger;
     private readonly Network _network;
 
-    public LocalLightningSigner(IFundingOutputBuilder fundingOutputBuilder, IKeyDerivationService keyDerivationService,
-                                ILogger<LocalLightningSigner> logger, NodeOptions nodeOptions,
-                                ISecureKeyManager secureKeyManager)
+    public LocalLightningSigner(IFundingOutputBuilder fundingOutputBuilder,
+                                IKeyDerivationService keyDerivationService, ILogger<LocalLightningSigner> logger,
+                                NodeOptions nodeOptions, ISecureKeyManager secureKeyManager,
+                                IUtxoMemoryRepository utxoMemoryRepository)
     {
         _fundingOutputBuilder = fundingOutputBuilder;
         _keyDerivationService = keyDerivationService;
         _logger = logger;
         _secureKeyManager = secureKeyManager;
+        _utxoMemoryRepository = utxoMemoryRepository;
 
         _network = Network.GetNetwork(nodeOptions.BitcoinNetwork) ??
                    throw new ArgumentException("Invalid Bitcoin network specified", nameof(nodeOptions));
@@ -51,7 +56,7 @@ public class LocalLightningSigner : ILightningSigner
     public uint CreateNewChannel(out ChannelBasepoints basepoints, out CompactPubKey firstPerCommitmentPoint)
     {
         // Generate a new key for this channel
-        var channelPrivExtKey = _secureKeyManager.GetNextKey(out var index);
+        var channelPrivExtKey = _secureKeyManager.GetNextChannelKey(out var index);
         var channelKey = ExtKey.CreateFromBytes(channelPrivExtKey);
 
         // Generate Lightning basepoints using proper BIP32 derivation paths
@@ -86,7 +91,7 @@ public class LocalLightningSigner : ILightningSigner
         _logger.LogTrace("Generating channel basepoints for key index {ChannelKeyIndex}", channelKeyIndex);
 
         // Recreate the basepoints from the channel key index
-        var channelExtKey = _secureKeyManager.GetKeyAtIndex(channelKeyIndex);
+        var channelExtKey = _secureKeyManager.GetChannelKeyAtIndex(channelKeyIndex);
         var channelKey = ExtKey.CreateFromBytes(channelExtKey);
 
         using var localFundingSecret = channelKey.Derive(FundingDerivationIndex, true).PrivateKey;
@@ -110,7 +115,7 @@ public class LocalLightningSigner : ILightningSigner
         _logger.LogTrace("Retrieving channel basepoints for channel {ChannelId}", channelId);
 
         if (!_channelSigningInfo.TryGetValue(channelId, out var signingInfo))
-            throw new InvalidOperationException($"Channel {channelId} not registered");
+            throw new SignerException($"Channel {channelId} not registered", channelId);
 
         return GetChannelBasepoints(signingInfo.ChannelKeyIndex);
     }
@@ -126,9 +131,9 @@ public class LocalLightningSigner : ILightningSigner
             channelKeyIndex, commitmentNumber);
 
         // Derive the per-commitment seed from the channel key
-        var channelExtKey = _secureKeyManager.GetKeyAtIndex(channelKeyIndex);
+        var channelExtKey = _secureKeyManager.GetChannelKeyAtIndex(channelKeyIndex);
         var channelKey = ExtKey.CreateFromBytes(channelExtKey);
-        using var perCommitmentSeed = channelKey.Derive(5).PrivateKey;
+        using var perCommitmentSeed = channelKey.Derive(PerCommitmentSeedDerivationIndex, true).PrivateKey;
 
         var perCommitmentSecret =
             _keyDerivationService.GeneratePerCommitmentSecret(perCommitmentSeed.ToBytes(), commitmentNumber);
@@ -141,7 +146,7 @@ public class LocalLightningSigner : ILightningSigner
     public CompactPubKey GetPerCommitmentPoint(ChannelId channelId, ulong commitmentNumber)
     {
         if (!_channelSigningInfo.TryGetValue(channelId, out var signingInfo))
-            throw new InvalidOperationException($"Channel {channelId} not registered");
+            throw new SignerException($"Channel {channelId} not registered", channelId);
 
         return GetPerCommitmentPoint(signingInfo.ChannelKeyIndex, commitmentNumber);
     }
@@ -162,9 +167,9 @@ public class LocalLightningSigner : ILightningSigner
             channelKeyIndex, commitmentNumber);
 
         // Derive the per-commitment seed from the channel key
-        var channelExtKey = _secureKeyManager.GetKeyAtIndex(channelKeyIndex);
+        var channelExtKey = _secureKeyManager.GetChannelKeyAtIndex(channelKeyIndex);
         var channelKey = ExtKey.CreateFromBytes(channelExtKey);
-        using var perCommitmentSeed = channelKey.Derive(5).PrivateKey;
+        using var perCommitmentSeed = channelKey.Derive(PerCommitmentSeedDerivationIndex, true).PrivateKey;
 
         return _keyDerivationService.GeneratePerCommitmentSecret(
             perCommitmentSeed.ToBytes(), commitmentNumber);
@@ -174,16 +179,220 @@ public class LocalLightningSigner : ILightningSigner
     public Secret ReleasePerCommitmentSecret(ChannelId channelId, ulong commitmentNumber)
     {
         if (!_channelSigningInfo.TryGetValue(channelId, out var signingInfo))
-            throw new InvalidOperationException($"Channel {channelId} not registered");
+            throw new SignerException($"Channel {channelId} not registered", channelId);
 
         return ReleasePerCommitmentSecret(signingInfo.ChannelKeyIndex, commitmentNumber);
     }
 
-    /// <inheritdoc />
-    public CompactSignature SignTransaction(ChannelId channelId, SignedTransaction unsignedTransaction)
+    public bool SignWalletTransaction(SignedTransaction unsignedTransaction)
     {
-        _logger.LogTrace("Signing transaction for channel {ChannelId} with TxId {TxId}", channelId,
+        throw new NotImplementedException();
+    }
+
+    public bool SignFundingTransaction(ChannelId channelId, SignedTransaction unsignedTransaction)
+    {
+        _logger.LogTrace("Signing funding transaction for channel {ChannelId} with TxId {TxId}", channelId,
                          unsignedTransaction.TxId);
+
+        if (!_channelSigningInfo.TryGetValue(channelId, out var signingInfo))
+            throw new SignerException($"Channel {channelId} not registered with signer", channelId);
+
+        Transaction nBitcoinTx;
+        try
+        {
+            nBitcoinTx = Transaction.Load(unsignedTransaction.RawTxBytes, _network);
+        }
+        catch (Exception ex)
+        {
+            throw new ArgumentException(
+                $"Failed to load transaction from RawTxBytes. TxId hint: {unsignedTransaction.TxId}", ex);
+        }
+
+        try
+        {
+            // Verify the funding output exists and is correct
+            if (signingInfo.FundingOutputIndex >= nBitcoinTx.Outputs.Count)
+                throw new SignerException($"Funding output index {signingInfo.FundingOutputIndex} is out of range",
+                                          channelId);
+
+            // Build the funding output using the channel's signing info
+            var fundingOutputInfo = new FundingOutputInfo(signingInfo.FundingSatoshis, signingInfo.LocalFundingPubKey,
+                                                          signingInfo.RemoteFundingPubKey, signingInfo.FundingTxId,
+                                                          signingInfo.FundingOutputIndex);
+
+            var expectedFundingOutput = _fundingOutputBuilder.Build(fundingOutputInfo);
+            var expectedTxOut = expectedFundingOutput.ToTxOut();
+
+            // Validate the transaction output matches what we expect
+            var actualTxOut = nBitcoinTx.Outputs[signingInfo.FundingOutputIndex];
+            if (!actualTxOut.ToBytes().SequenceEqual(expectedTxOut.ToBytes()))
+                throw new SignerException("Funding output script does not match expected script", channelId);
+
+            if (actualTxOut.Value != expectedTxOut.Value)
+                throw new SignerException(
+                    $"Funding output amount {actualTxOut.Value} does not match expected amount {expectedTxOut.Value}",
+                    channelId);
+
+            _logger.LogDebug("Funding output validation passed for channel {ChannelId}", channelId);
+
+            // Check transaction structure
+            if (nBitcoinTx.Inputs.Count == 0)
+                throw new SignerException("Funding transaction has no inputs", channelId);
+
+            // Get the utxoSet for the channel
+            var utxoModels = _utxoMemoryRepository.GetLockedUtxosForChannel(channelId);
+
+            var signedInputCount = 0;
+            var prevOuts = new TxOut[nBitcoinTx.Inputs.Count];
+            var signingKeys = new Key?[nBitcoinTx.Inputs.Count];
+            var taprootKeyPairs = new TaprootKeyPair?[nBitcoinTx.Inputs.Count];
+            var utxos = new UtxoModel[nBitcoinTx.Inputs.Count];
+
+            // Sign each input
+            for (var i = 0; i < nBitcoinTx.Inputs.Count; i++)
+            {
+                var input = nBitcoinTx.Inputs[i];
+
+                // Try to get the address being spent
+                var utxo = utxoModels.FirstOrDefault(x => x.TxId.Equals(new TxId(input.PrevOut.Hash.ToBytes()))
+                                                       && x.Index.Equals(input.PrevOut.N));
+                if (utxo is null)
+                {
+                    _logger.LogWarning("Could not find UTXO for input {InputIndex} in funding transaction", i);
+                    continue;
+                }
+
+                if (utxo.WalletAddress is null)
+                {
+                    _logger.LogWarning(
+                        "UTXO did not have a WalletAddress for input {InputIndex} in funding transaction", i);
+                    continue;
+                }
+
+                utxos[i] = utxo;
+
+                try
+                {
+                    // Create the scriptPubKey and previous output based on the address type
+                    Script scriptPubKey;
+                    ExtPrivKey signingExtKey;
+                    Key? signingKey = null;
+                    TaprootKeyPair? taprootKeyPair = null;
+
+                    switch (utxo.AddressType)
+                    {
+                        case AddressType.P2Wpkh:
+                            // Derive the key for this specific UTXO
+                            signingExtKey =
+                                _secureKeyManager.GetDepositP2WpkhKeyAtIndex(
+                                    utxo.WalletAddress.Index, utxo.WalletAddress.IsChange);
+                            signingKey = ExtKey.CreateFromBytes(signingExtKey).PrivateKey;
+                            // For P2WPKH: OP_0 <20-byte-pubkey-hash>
+                            scriptPubKey = signingKey.PubKey.WitHash.ScriptPubKey;
+                            break;
+
+                        case AddressType.P2Tr:
+                            // Derive the key for this specific UTXO
+                            signingExtKey =
+                                _secureKeyManager.GetDepositP2TrKeyAtIndex(
+                                    utxo.WalletAddress.Index, utxo.WalletAddress.IsChange);
+                            var rootKey = ExtKey.CreateFromBytes(signingExtKey).PrivateKey;
+                            // For P2TR (Taproot): OP_1 <32-byte-taproot-output>
+                            taprootKeyPair = rootKey.CreateTaprootKeyPair();
+                            scriptPubKey = taprootKeyPair.PubKey.ScriptPubKey;
+                            break;
+
+                        default:
+                            throw new SignerException($"Unsupported address type {utxo.AddressType} for input {i}",
+                                                      channelId);
+                    }
+
+                    signingKeys[i] = signingKey;
+                    taprootKeyPairs[i] = taprootKeyPair;
+                    prevOuts[i] = new TxOut(new Money(utxo.Amount.Satoshi), scriptPubKey);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to sign input {InputIndex} in funding transaction", i);
+                    throw new SignerException(
+                        $"Failed to sign input {i}",
+                        channelId, ex, "Signing error");
+                }
+            }
+
+            for (var i = 0; i < nBitcoinTx.Inputs.Count; i++)
+            {
+                try
+                {
+                    var utxo = utxos[i];
+                    var signingKey = signingKeys[i];
+                    var taprootKeyPair = taprootKeyPairs[i];
+                    var prevOut = prevOuts[i];
+
+                    switch (utxo.AddressType)
+                    {
+                        // Sign based on the address type
+                        case AddressType.P2Wpkh:
+                            if (signingKey is null)
+                                throw new SignerException($"Missing signing key for P2WPKH input {i}", channelId);
+
+                            // Sign P2WPKH input
+                            SignP2WpkhInput(nBitcoinTx, i, signingKey, prevOut);
+                            break;
+                        case AddressType.P2Tr:
+                            if (taprootKeyPair is null)
+                                throw new SignerException($"Missing taproot key pair for P2TR input {i}", channelId);
+
+                            // Sign P2TR (Taproot) input - key path spend
+                            SignP2TrInput(nBitcoinTx, i, taprootKeyPair, prevOuts);
+                            break;
+                        default:
+                            throw new SignerException($"Unsupported address type {utxo.AddressType} for input {i}",
+                                                      channelId);
+                    }
+
+                    signedInputCount++;
+
+                    _logger.LogTrace("Signed input {InputIndex} for funding transaction", i);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to sign input {InputIndex} in funding transaction", i);
+                    throw new SignerException(
+                        $"Failed to sign input {i}",
+                        channelId, ex, "Signing error");
+                }
+            }
+
+            if (signedInputCount == 0)
+                throw new SignerException("No inputs were successfully signed", channelId, "Signing failed");
+
+            // Update the transaction bytes in the SignedTransaction
+            unsignedTransaction.RawTxBytes = nBitcoinTx.ToBytes();
+
+            _logger.LogInformation(
+                "Successfully signed {SignedCount}/{TotalCount} inputs for funding transaction {TxId}",
+                signedInputCount, nBitcoinTx.Inputs.Count, nBitcoinTx.GetHash());
+
+            return signedInputCount == nBitcoinTx.Inputs.Count;
+        }
+        catch (SignerException)
+        {
+            throw;
+        }
+        catch (Exception e)
+        {
+            throw new SignerException($"Exception during funding transaction signing for TxId {nBitcoinTx.GetHash()}",
+                                      channelId, e);
+        }
+    }
+
+    /// <inheritdoc />
+    public CompactSignature SignChannelTransaction(ChannelId channelId, SignedTransaction unsignedTransaction)
+    {
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("Signing transaction for channel {ChannelId} with TxId {TxId}", channelId,
+                             unsignedTransaction.TxId);
 
         if (!_channelSigningInfo.TryGetValue(channelId, out var signingInfo))
             throw new InvalidOperationException($"Channel {channelId} not registered with signer");
@@ -210,9 +419,8 @@ public class LocalLightningSigner : ILightningSigner
             var spentOutput = fundingOutput.ToTxOut();
 
             // Get the signature hash for SegWit
-            var signatureHash = nBitcoinTx.GetSignatureHash(fundingOutput.RedeemScript,
-                                                            signingInfo.FundingOutputIndex, SigHash.All,
-                                                            spentOutput, HashVersion.WitnessV0);
+            var signatureHash = nBitcoinTx.GetSignatureHash(fundingOutput.RedeemScript, 0, SigHash.All, spentOutput,
+                                                            HashVersion.WitnessV0);
 
             // Get the funding private key
             using var fundingPrivateKey = GenerateFundingPrivateKey(signingInfo.ChannelKeyIndex);
@@ -232,8 +440,9 @@ public class LocalLightningSigner : ILightningSigner
     public void ValidateSignature(ChannelId channelId, CompactSignature signature,
                                   SignedTransaction unsignedTransaction)
     {
-        _logger.LogTrace("Validating signature for channel {ChannelId} with TxId {TxId}", channelId,
-                         unsignedTransaction.TxId);
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("Validating signature for channel {ChannelId} with TxId {TxId}", channelId,
+                             unsignedTransaction.TxId);
 
         if (!_channelSigningInfo.TryGetValue(channelId, out var signingInfo))
             throw new SignerException("Channel not registered with signer", channelId, "Internal error");
@@ -278,18 +487,15 @@ public class LocalLightningSigner : ILightningSigner
         {
             // Build the funding output using the channel's signing info
             var fundingOutputInfo = new FundingOutputInfo(signingInfo.FundingSatoshis, signingInfo.LocalFundingPubKey,
-                                                          signingInfo.RemoteFundingPubKey)
-            {
-                TransactionId = signingInfo.FundingTxId,
-                Index = signingInfo.FundingOutputIndex
-            };
+                                                          signingInfo.RemoteFundingPubKey, signingInfo.FundingTxId,
+                                                          signingInfo.FundingOutputIndex);
 
             var fundingOutput = _fundingOutputBuilder.Build(fundingOutputInfo);
             var spentOutput = fundingOutput.ToTxOut();
 
-            var signatureHash = nBitcoinTx.GetSignatureHash(fundingOutput.RedeemScript,
-                                                            signingInfo.FundingOutputIndex, SigHash.All,
-                                                            spentOutput, HashVersion.WitnessV0);
+            var signatureHash =
+                nBitcoinTx.GetSignatureHash(fundingOutput.RedeemScript, 0, SigHash.All, spentOutput,
+                                            HashVersion.WitnessV0);
 
             if (!pubKey.Verify(signatureHash, txSignature))
                 throw new SignerException("Peer signature is invalid", channelId, "Invalid signature provided");
@@ -303,14 +509,59 @@ public class LocalLightningSigner : ILightningSigner
 
     protected virtual Key GenerateFundingPrivateKey(uint channelKeyIndex)
     {
-        var channelExtKey = _secureKeyManager.GetKeyAtIndex(channelKeyIndex);
+        var channelExtKey = _secureKeyManager.GetChannelKeyAtIndex(channelKeyIndex);
         var channelKey = ExtKey.CreateFromBytes(channelExtKey);
 
         return GenerateFundingPrivateKey(channelKey);
     }
 
-    private Key GenerateFundingPrivateKey(ExtKey extKey)
+    private static Key GenerateFundingPrivateKey(ExtKey extKey)
     {
         return extKey.Derive(FundingDerivationIndex, true).PrivateKey;
+    }
+
+    /// <summary>
+    /// Sign a P2WPKH (Pay-to-Witness-PubKey-Hash) input
+    /// </summary>
+    private static void SignP2WpkhInput(Transaction tx, int inputIndex, Key signingKey, TxOut prevOut)
+    {
+        // For P2WPKH, the scriptCode is the P2PKH script: OP_DUP OP_HASH160 <pubkeyhash> OP_EQUALVERIFY OP_CHECKSIG
+        var scriptCode = signingKey.PubKey.Hash.ScriptPubKey;
+
+        // Get the signature hash for SegWit v0
+        var sigHash =
+            tx.GetSignatureHash(scriptCode, inputIndex, SigHash.All, prevOut, HashVersion.WitnessV0);
+
+        // Sign the hash
+        var transactionSignature = signingKey.Sign(sigHash, new SigningOptions(SigHash.All, false));
+
+        // For P2WPKH, witness is: <signature> <pubkey>
+        var witness = new WitScript(
+            Op.GetPushOp(transactionSignature.ToBytes()),
+            Op.GetPushOp(signingKey.PubKey.ToBytes()));
+
+        tx.Inputs[inputIndex].WitScript = witness;
+    }
+
+    /// <summary>
+    /// Sign a P2TR (Pay-to-Taproot) input using the key path spend
+    /// </summary>
+    /// <remarks>For Taproot, we use BIP341 signing</remarks>
+    private static void SignP2TrInput(Transaction tx, int inputIndex, TaprootKeyPair taprootKeyPair, TxOut[] prevOuts)
+    {
+        // Create the TaprootExecutionData
+        var taprootExecutionData = new TaprootExecutionData(inputIndex)
+        {
+            SigHash = TaprootSigHash.All
+        };
+
+        // Calculate the signature hash using Taproot rules (BIP341)
+        var sigHash = tx.GetSignatureHashTaproot(prevOuts.ToArray(), taprootExecutionData);
+
+        // Sign with Schnorr signature (BIP340)
+        var taprootSignature = taprootKeyPair.SignTaprootKeySpend(sigHash, TaprootSigHash.All);
+
+        // For key path spend, witness is just: <signature>
+        tx.Inputs[inputIndex].WitScript = new WitScript(Op.GetPushOp(taprootSignature.ToBytes()));
     }
 }

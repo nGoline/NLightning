@@ -52,6 +52,10 @@ public static class DependencyInjection
 
         services.AddDbContext<NLightningDbContext>((_, optionsBuilder) =>
         {
+            // Check if we should be logging sensible data (i.e., query values)
+            if ((configuration["Database:EnableSensitiveQueryLogging"]?.ToLowerInvariant() ?? "false") == "true")
+                optionsBuilder.EnableSensitiveDataLogging();
+
             switch (resolvedDatabaseType)
             {
                 case DatabaseType.PostgreSql:

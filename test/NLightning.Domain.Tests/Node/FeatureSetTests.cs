@@ -6,6 +6,7 @@ using Enums;
 public class FeatureSetTests
 {
     #region SetFeature IsFeatureSet
+
     [Theory]
     [InlineData(Feature.OptionDataLossProtect, false)]
     [InlineData(Feature.OptionDataLossProtect, true)]
@@ -61,11 +62,8 @@ public class FeatureSetTests
     [Theory]
     [InlineData(Feature.GossipQueriesEx, Feature.GossipQueries, false)]
     [InlineData(Feature.GossipQueriesEx, Feature.GossipQueries, true)]
-    [InlineData(Feature.PaymentSecret, Feature.VarOnionOptin, false)]
-    [InlineData(Feature.PaymentSecret, Feature.VarOnionOptin, true)]
-    [InlineData(Feature.OptionAnchorOutputs, Feature.OptionStaticRemoteKey, false)]
-    [InlineData(Feature.OptionAnchorOutputs, Feature.OptionStaticRemoteKey, true)]
-    public void Given_Features_When_SetFeatureADependsOnFeatureB_Then_FeatureBIsSet(Feature feature, Feature dependsOn, bool isCompulsory)
+    public void Given_Features_When_SetFeatureADependsOnFeatureB_Then_FeatureBIsSet(
+        Feature feature, Feature dependsOn, bool isCompulsory)
     {
         // Arrange
         var features = new FeatureSet();
@@ -84,11 +82,8 @@ public class FeatureSetTests
     [Theory]
     [InlineData(Feature.GossipQueries, Feature.GossipQueriesEx, false)]
     [InlineData(Feature.GossipQueries, Feature.GossipQueriesEx, true)]
-    [InlineData(Feature.VarOnionOptin, Feature.PaymentSecret, false)]
-    [InlineData(Feature.VarOnionOptin, Feature.PaymentSecret, true)]
-    [InlineData(Feature.OptionStaticRemoteKey, Feature.OptionAnchorOutputs, false)]
-    [InlineData(Feature.OptionStaticRemoteKey, Feature.OptionAnchorOutputs, true)]
-    public void Given_Features_When_UnsetFeatureA_Then_FeatureBIsUnset(Feature feature, Feature dependent, bool isCompulsory)
+    public void Given_Features_When_UnsetFeatureA_Then_FeatureBIsUnset(Feature feature, Feature dependent,
+                                                                       bool isCompulsory)
     {
         // Arrange
         var features = new FeatureSet();
@@ -114,15 +109,17 @@ public class FeatureSetTests
         features.Changed += (_, _) => eventRaised = true;
 
         // Act
-        features.SetFeature(42, true);
+        features.SetFeature(134, true);
 
         // Assert
-        Assert.True(features.IsFeatureSet(42, false));
+        Assert.True(features.IsFeatureSet(134, false));
         Assert.True(eventRaised);
     }
+
     #endregion
 
     #region IsCompatible
+
     [Theory]
     [InlineData(Feature.OptionDataLossProtect, false, false, false, false, true)]
     [InlineData(Feature.OptionDataLossProtect, false, true, false, false, true)]
@@ -133,7 +130,9 @@ public class FeatureSetTests
     [InlineData(Feature.OptionDataLossProtect, true, false, true, false, true)]
     [InlineData(Feature.OptionDataLossProtect, false, true, true, false, false)]
     [InlineData(Feature.OptionDataLossProtect, true, false, false, true, false)]
-    public void Given_Features_When_IsCompatible_Then_ReturnIsKnown(Feature feature, bool unsetLocal, bool isLocalCompulsorySet, bool unsetOther, bool isOtherCompulsorySet, bool expected)
+    public void Given_Features_When_IsCompatible_Then_ReturnIsKnown(Feature feature, bool unsetLocal,
+                                                                    bool isLocalCompulsorySet, bool unsetOther,
+                                                                    bool isOtherCompulsorySet, bool expected)
     {
         // Arrange
         var features = new FeatureSet();
@@ -228,9 +227,11 @@ public class FeatureSetTests
         // Assert
         Assert.False(result);
     }
+
     #endregion
 
     #region Combine
+
     [Fact]
     public void Given_Features_When_Combine_Then_FeaturesAreCombined()
     {
@@ -254,5 +255,6 @@ public class FeatureSetTests
         Assert.True(combined.IsFeatureSet(Feature.OptionSupportLargeChannel, true));
         Assert.True(combined.IsFeatureSet(Feature.GossipQueries, true));
     }
+
     #endregion
 }

@@ -10,6 +10,7 @@ using NLightning.Domain.Crypto.ValueObjects;
 using NLightning.Domain.Enums;
 using NLightning.Domain.Exceptions;
 using NLightning.Domain.Money;
+using NLightning.Domain.Node;
 using NLightning.Domain.Node.Options;
 using NLightning.Domain.Protocol.Interfaces;
 using NLightning.Domain.Protocol.Messages;
@@ -58,9 +59,9 @@ public class OpenChannel1MessageHandlerTests
         var dustLimitAmount = LightningMoney.Satoshis(354);
         var feeRateAmountPerKw = LightningMoney.Zero;
         var htlcMinimumAmount = LightningMoney.Satoshis(1);
-        var maxAcceptedHtlcs = (ushort)10;
+        const ushort maxAcceptedHtlcs = 10;
         var maxHtlcAmountInFlight = LightningMoney.Satoshis(10_000);
-        var toSelfDelay = (ushort)144;
+        const ushort toSelfDelay = 144;
         var fundingAmount = LightningMoney.Satoshis(10_000);
 
         // Create a valid OpenChannel1Message
@@ -71,7 +72,8 @@ public class OpenChannel1MessageHandlerTests
                                     emptyPubKey, fundingAmount, emptyPubKey, emptyPubKey, htlcMinimumAmount,
                                     maxAcceptedHtlcs, maxHtlcAmountInFlight, emptyPubKey, LightningMoney.Zero,
                                     emptyPubKey, toSelfDelay);
-        _validMessage = new OpenChannel1Message(payload);
+        _validMessage =
+            new OpenChannel1Message(payload, new ChannelTypeTlv(FeatureSet.NewBasicChannelType().GetBytes()!));
 
         // Setup ChannelConfig
         var channelConfig = new ChannelConfig(channelReserveAmount, feeRateAmountPerKw, htlcMinimumAmount,
@@ -108,7 +110,8 @@ public class OpenChannel1MessageHandlerTests
                         new AcceptChannel1Payload(channelId, channelReserveAmount, emptyPubKey, dustLimitAmount,
                                                   emptyPubKey, emptyPubKey, emptyPubKey, htlcMinimumAmount,
                                                   maxAcceptedHtlcs, maxHtlcAmountInFlight, 3, emptyPubKey,
-                                                  emptyPubKey, toSelfDelay)));
+                                                  emptyPubKey, toSelfDelay),
+                        new ChannelTypeTlv(FeatureSet.NewBasicChannelType().GetBytes()!)));
     }
 
     [Fact]
@@ -135,7 +138,8 @@ public class OpenChannel1MessageHandlerTests
 
         _mockMessageFactory.Verify(
             x => x.CreateAcceptChannel1Message(
-                _channel.ChannelConfig.ChannelReserveAmount!, null,
+                _channel.ChannelConfig.ChannelReserveAmount,
+                It.IsAny<ChannelTypeTlv>(),
                 _channel.LocalKeySet.DelayedPaymentCompactBasepoint,
                 _channel.LocalKeySet.CurrentPerCommitmentCompactPoint,
                 _channel.LocalKeySet.FundingCompactPubKey, _channel.LocalKeySet.HtlcCompactBasepoint,

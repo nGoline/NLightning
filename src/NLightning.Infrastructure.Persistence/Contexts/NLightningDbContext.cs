@@ -24,6 +24,8 @@ public class NLightningDbContext : DbContext
     // Bitcoin DbSets
     public DbSet<BlockchainStateEntity> BlockchainStates { get; set; }
     public DbSet<WatchedTransactionEntity> WatchedTransactions { get; set; }
+    public DbSet<WalletAddressEntity> WalletAddresses { get; set; }
+    public DbSet<UtxoEntity> Utxos { get; set; }
 
     // Channel DbSets
     public DbSet<ChannelEntity> Channels { get; set; }
@@ -41,6 +43,8 @@ public class NLightningDbContext : DbContext
         // Bitcoin entities
         modelBuilder.ConfigureBlockchainStateEntity(_databaseType);
         modelBuilder.ConfigureWatchedTransactionEntity(_databaseType);
+        modelBuilder.ConfigureWalletAddressEntity(_databaseType);
+        modelBuilder.ConfigureUtxoEntity(_databaseType);
 
         // Channel entities
         modelBuilder.ConfigureChannelEntity(_databaseType);

@@ -5,7 +5,9 @@ namespace NLightning.Application.Channels.Handlers;
 using Domain.Channels.Enums;
 using Domain.Channels.Interfaces;
 using Domain.Crypto.ValueObjects;
+using Domain.Enums;
 using Domain.Exceptions;
+using Domain.Node;
 using Domain.Node.Options;
 using Domain.Protocol.Interfaces;
 using Domain.Protocol.Messages;
@@ -62,12 +64,28 @@ public class OpenChannel1MessageHandler : IChannelMessageHandler<OpenChannel1Mes
         UpfrontShutdownScriptTlv? upfrontShutdownScriptTlv = null;
         if (channel.LocalUpfrontShutdownScript is not null)
             upfrontShutdownScriptTlv = new UpfrontShutdownScriptTlv(channel.LocalUpfrontShutdownScript.Value);
+        else
+            upfrontShutdownScriptTlv = new UpfrontShutdownScriptTlv(Array.Empty<byte>());
 
-        // TODO: Create the ChannelTypeTlv
+        var channelTypeFeatureSet = FeatureSet.NewBasicChannelType();
+        if (negotiatedFeatures.OptionAnchors >= FeatureSupport.Optional)
+            channelTypeFeatureSet.SetFeature(Feature.OptionAnchors,
+                                             negotiatedFeatures.OptionAnchors == FeatureSupport.Compulsory);
+
+        if (channel.ChannelConfig.UseScidAlias >= FeatureSupport.Optional)
+            channelTypeFeatureSet.SetFeature(Feature.OptionScidAlias,
+                                             channel.ChannelConfig.UseScidAlias == FeatureSupport.Compulsory);
+
+        if (channel.ChannelConfig.MinimumDepth == 0)
+            channelTypeFeatureSet.SetFeature(Feature.OptionZeroconf, true);
+
+        var featureSetBytes = channelTypeFeatureSet.GetBytes() ?? throw new ChannelErrorException("The channel type is not supported", payload.ChannelId,
+                                            "Sorry, we had an internal error");
+        var channelTypeTlv = new ChannelTypeTlv(featureSetBytes);
 
         // Create the reply message
         var acceptChannel1ReplyMessage = _messageFactory
-           .CreateAcceptChannel1Message(channel.ChannelConfig.ChannelReserveAmount!, null,
+           .CreateAcceptChannel1Message(channel.ChannelConfig.ChannelReserveAmount, channelTypeTlv,
                                         channel.LocalKeySet.DelayedPaymentCompactBasepoint,
                                         channel.LocalKeySet.CurrentPerCommitmentCompactPoint,
                                         channel.LocalKeySet.FundingCompactPubKey,

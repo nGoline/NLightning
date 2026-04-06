@@ -1,12 +1,13 @@
-using NLightning.Domain.Crypto.ValueObjects;
-using NLightning.Domain.Protocol.Interfaces;
-
 namespace NLightning.Domain.Node.Interfaces;
+
+using Crypto.ValueObjects;
+using Exceptions;
+using Protocol.Interfaces;
 
 /// <summary>
 /// Interface for communication with a single peer.
 /// </summary>
-public interface IPeerCommunicationService
+public interface IPeerCommunicationService : IDisposable
 {
     /// <summary>
     /// Gets a value indicating whether the connection is established.
@@ -26,7 +27,7 @@ public interface IPeerCommunicationService
     /// <summary>
     /// Event raised when the peer is disconnected.
     /// </summary>
-    event EventHandler? DisconnectEvent;
+    event EventHandler<Exception?>? DisconnectEvent;
 
     /// <summary>
     /// Event raised when an exception occurs.
@@ -42,6 +43,14 @@ public interface IPeerCommunicationService
     Task SendMessageAsync(IMessage message, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends a warning message to the peer.
+    /// </summary>
+    /// <param name="we">The warning exception to send.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task SendWarningAsync(WarningException we, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Initializes the communication with the peer.
     /// </summary>
     /// <param name="networkTimeout">The network timeout.</param>
@@ -51,5 +60,6 @@ public interface IPeerCommunicationService
     /// <summary>
     /// Disconnects from the peer.
     /// </summary>
-    void Disconnect();
+    /// <param name="exception">The exception that caused the disconnection, if any.</param>
+    void Disconnect(Exception? exception = null);
 }

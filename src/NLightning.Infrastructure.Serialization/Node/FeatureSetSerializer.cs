@@ -25,13 +25,8 @@ public class FeatureSetSerializer : IFeatureSetSerializer
     public async Task SerializeAsync(FeatureSet featureSet, Stream stream, bool asGlobal = false,
                                      bool includeLength = true)
     {
-        // If it's a global feature, cut out any bit greater than 13
-        if (asGlobal)
-            featureSet.FeatureFlags.Length = 13;
-
-        // Convert BitArray to byte array
-        var bytes = new byte[(featureSet.FeatureFlags.Length + 7) / 8];
-        featureSet.FeatureFlags.CopyTo(bytes, 0);
+        // Convert BitArray to a byte array
+        var bytes = featureSet.GetBytes(asGlobal) ?? throw new SerializationException("Feature set is empty");
 
         // Set bytes as big endian
         if (BitConverter.IsLittleEndian)

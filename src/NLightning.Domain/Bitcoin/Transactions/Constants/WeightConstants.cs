@@ -15,11 +15,14 @@ public static class WeightConstants
     public const int P2PkhInputWeight = 148; // At Least
     public const int P2ShInputWeight = 148; // At Least
     public const int P2WpkhInputWeight = 41; // At Least
+    public const int P2TrInputWeight = P2WpkhInputWeight;
     public const int P2WshInputWeight = P2WpkhInputWeight;
-    public const int P2UnknownSInputWeight = P2WpkhInputWeight;
+    public const int P2UnknownInputWeight = P2WpkhInputWeight;
 
     public const int WitnessHeader = 2; // flag, marker
     public const int MultisigWitnessWeight = 222; // 1 byte for each signature
+    public const int SingleSigWitnessWeight = 107;
+    public const int TaprootSigWitnessWeight = 66;
 
     public const int HtlcOutputWeight = P2WshOutputWeight;
     public const int AnchorOutputWeight = P2WshOutputWeight;

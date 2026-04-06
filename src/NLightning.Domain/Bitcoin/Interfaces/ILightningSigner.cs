@@ -56,9 +56,19 @@ public interface ILightningSigner
     Secret ReleasePerCommitmentSecret(ChannelId channelId, ulong commitmentNumber);
 
     /// <summary>
+    /// Sign a general transaction using the wallet signing context
+    /// </summary>
+    bool SignWalletTransaction(SignedTransaction unsignedTransaction);
+
+    /// <summary>
+    /// Sign a funding transaction using the wallet signing context  and validating using the channel context
+    /// </summary>
+    bool SignFundingTransaction(ChannelId channelId, SignedTransaction unsignedTransaction);
+
+    /// <summary>
     /// Sign a transaction using the channel's signing context
     /// </summary>
-    CompactSignature SignTransaction(ChannelId channelId, SignedTransaction unsignedTransaction);
+    CompactSignature SignChannelTransaction(ChannelId channelId, SignedTransaction unsignedTransaction);
 
     /// <summary>
     /// Verify a signature against a transaction

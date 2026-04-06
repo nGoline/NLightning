@@ -12,17 +12,9 @@ public enum Feature
     /// 0 is for the compulsory bit, 1 is for the optional bit.
     /// </summary>
     /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports the data_loss_protect field in the channel_reestablish message.
+    /// This feature is compulsory and is used to indicate that the node supports the data_loss_protect field in the channel_reestablish message.
     /// </remarks>
     OptionDataLossProtect = 1,
-
-    /// <summary>
-    /// 3 is for the optional bit.
-    /// </summary>
-    /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports the initial_routing_sync field in the channel_reestablish message.
-    /// </remarks>
-    InitialRoutingSync = 3,
 
     /// <summary>
     /// 4 is for the compulsory bit, 5 is for the optional bit.
@@ -60,7 +52,7 @@ public enum Feature
     /// 12 is for the compulsory bit, 13 is for the optional bit.
     /// </summary>
     /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports static_remotekey.
+    /// This feature is compulsory and is used to indicate that the node supports static_remotekey.
     /// </remarks>
     OptionStaticRemoteKey = 13,
 
@@ -68,7 +60,7 @@ public enum Feature
     /// 14 is for the compulsory bit, 15 is for the optional bit.
     /// </summary>
     /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports payment_secret.
+    /// This feature is compulsory and is used to indicate that the node supports payment_secret.
     /// </remarks>
     PaymentSecret = 15,
 
@@ -89,20 +81,12 @@ public enum Feature
     OptionSupportLargeChannel = 19,
 
     /// <summary>
-    /// 20 is for the compulsory bit, 21 is for the optional bit.
-    /// </summary>
-    /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports anchor outputs.
-    /// </remarks>
-    OptionAnchorOutputs = 21,
-
-    /// <summary>
     /// 22 is for the compulsory bit, 23 is for the optional bit.
     /// </summary>
     /// <remarks>
     /// This feature is optional and is used to indicate that the node supports anchor outputs with zero fee htlc transactions.
     /// </remarks>
-    OptionAnchorsZeroFeeHtlcTx = 23,
+    OptionAnchors = 23,
 
     /// <summary>
     /// 24 is for the compulsory bit, 25 is for the optional bit.
@@ -124,9 +108,25 @@ public enum Feature
     /// 28 is for the compulsory bit, 29 is for the optional bit.
     /// </summary>
     /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports dual funded channels (v2).
+    /// This feature is optional and is used to indicate that the node supports dual-funded channels (v2).
     /// </remarks>
     OptionDualFund = 29,
+
+    /// <summary>
+    /// 34 is for the compulsory bit, 35 is for the optional bit.
+    /// </summary>
+    /// <remarks>
+    /// This feature is optional and is used to indicate that the node supports quiesce.
+    /// </remarks>
+    OptionQuiesce = 35,
+
+    /// <summary>
+    /// 36 is for the compulsory bit, 37 is for the optional bit.
+    /// </summary>
+    /// <remarks>
+    /// This feature is optional and is used to indicate that the node can generate/relay attribution data.
+    /// </remarks>
+    OptionAttributionData = 37,
 
     /// <summary>
     /// 38 is for the compulsory bit, 39 is for the optional bit.
@@ -137,10 +137,18 @@ public enum Feature
     OptionOnionMessages = 39,
 
     /// <summary>
+    /// 42 is for the compulsory bit, 43 is for the optional bit.
+    /// </summary>
+    /// <remarks>
+    /// This feature is optional and is used to indicate that the node supports providing storage for other nodes' encrypted backup data.
+    /// </remarks>
+    OptionProvideStorage = 43,
+
+    /// <summary>
     /// 44 is for the compulsory bit, 45 is for the optional bit.
     /// </summary>
     /// <remarks>
-    /// This feature is optional and is used to indicate that the node supports channel type.
+    /// This feature is compulsory and is used to indicate that the node supports channel type.
     /// </remarks>
     OptionChannelType = 45,
 
@@ -166,5 +174,13 @@ public enum Feature
     /// <remarks>
     /// This feature is optional and is used to indicate that the node supports zeroconf channels.
     /// </remarks>
-    OptionZeroconf = 51
+    OptionZeroconf = 51,
+
+    /// <summary>
+    /// 60 is for the compulsory bit, 61 is for the optional bit.
+    /// </summary>
+    /// <remarks>
+    /// This feature is optional and is used to indicate that the node supports simple close.
+    /// </remarks>
+    OptionSimpleClose = 61
 }

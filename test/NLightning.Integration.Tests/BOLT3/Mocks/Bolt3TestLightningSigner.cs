@@ -17,7 +17,7 @@ using CompactSignature = Domain.Crypto.ValueObjects.CompactSignature;
 public class Bolt3TestLightningSigner : LocalLightningSigner, ILightningSigner
 {
     public Bolt3TestLightningSigner(NodeOptions nodeOptions, ILogger<LocalLightningSigner> logger)
-        : base(new FundingOutputBuilder(), null, logger, nodeOptions, null)
+        : base(new FundingOutputBuilder(), null, logger, nodeOptions, null, null)
     {
     }
 

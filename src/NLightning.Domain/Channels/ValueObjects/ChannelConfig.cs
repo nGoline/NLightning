@@ -6,7 +6,7 @@ using Money;
 
 public readonly record struct ChannelConfig
 {
-    public LightningMoney? ChannelReserveAmount { get; }
+    public LightningMoney ChannelReserveAmount { get; }
     public LightningMoney LocalDustLimitAmount { get; }
     public LightningMoney FeeRateAmountPerKw { get; }
     public LightningMoney HtlcMinimumAmount { get; }
@@ -20,7 +20,7 @@ public readonly record struct ChannelConfig
     public BitcoinScript? LocalUpfrontShutdownScript { get; }
     public BitcoinScript? RemoteShutdownScriptPubKey { get; }
 
-    public ChannelConfig(LightningMoney? channelReserveAmount, LightningMoney feeRateAmountPerKw,
+    public ChannelConfig(LightningMoney channelReserveAmount, LightningMoney feeRateAmountPerKw,
                          LightningMoney htlcMinimumAmount, LightningMoney localDustLimitAmount,
                          ushort maxAcceptedHtlcs, LightningMoney maxHtlcAmountInFlight, uint minimumDepth,
                          bool optionAnchorOutputs, LightningMoney remoteDustLimitAmount, ushort toSelfDelay,

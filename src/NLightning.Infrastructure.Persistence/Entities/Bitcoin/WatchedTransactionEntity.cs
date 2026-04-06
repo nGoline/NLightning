@@ -14,7 +14,5 @@ public class WatchedTransactionEntity
     public DateTime? CompletedAt { get; set; }
 
     // Default constructor for EF Core
-    internal WatchedTransactionEntity()
-    {
-    }
+    internal WatchedTransactionEntity() { }
 }

@@ -1,7 +1,5 @@
 using System.Buffers;
 using System.Runtime.Serialization;
-using NLightning.Domain.Protocol.Interfaces;
-using NLightning.Domain.Serialization.Interfaces;
 
 namespace NLightning.Infrastructure.Serialization.Payloads;
 
@@ -10,8 +8,10 @@ using Domain.Channels.ValueObjects;
 using Domain.Crypto.Constants;
 using Domain.Crypto.ValueObjects;
 using Domain.Money;
+using Domain.Protocol.Interfaces;
 using Domain.Protocol.Payloads;
 using Domain.Protocol.ValueObjects;
+using Domain.Serialization.Interfaces;
 using Exceptions;
 
 public class OpenChannel1PayloadSerializer : IPayloadSerializer<OpenChannel1Payload>
@@ -59,7 +59,7 @@ public class OpenChannel1PayloadSerializer : IPayloadSerializer<OpenChannel1Payl
                           .GetBytesBigEndian((ulong)openChannel1Payload.ChannelReserveAmount.Satoshi));
         await stream
            .WriteAsync(EndianBitConverter.GetBytesBigEndian(openChannel1Payload.HtlcMinimumAmount.MilliSatoshi));
-        await stream.WriteAsync(EndianBitConverter.GetBytesBigEndian((ulong)openChannel1Payload.FeeRatePerKw.Satoshi));
+        await stream.WriteAsync(EndianBitConverter.GetBytesBigEndian((uint)openChannel1Payload.FeeRatePerKw.Satoshi));
         await stream.WriteAsync(EndianBitConverter.GetBytesBigEndian(openChannel1Payload.ToSelfDelay));
         await stream.WriteAsync(EndianBitConverter.GetBytesBigEndian(openChannel1Payload.MaxAcceptedHtlcs));
         await stream.WriteAsync(openChannel1Payload.FundingPubKey);

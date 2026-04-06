@@ -102,12 +102,28 @@ public class BaseDbRepository<TEntity> where TEntity : class
 
     protected void Update(TEntity entityToUpdate)
     {
-        // Get the current state of the entity
-        var trackedEntity = DbSet.Local.FirstOrDefault(e => e.Equals(entityToUpdate));
+        // Get the primary key value
+        var keyValues = _context.Entry(entityToUpdate).Metadata.FindPrimaryKey()?.Properties
+            .Select(p => _context.Entry(entityToUpdate).Property(p.Name).CurrentValue).ToArray();
+
+        if (keyValues == null || keyValues.Length == 0)
+        {
+            DbSet.Update(entityToUpdate);
+            return;
+        }
+
+        // Find tracked entity by primary key
+        var trackedEntity = DbSet.Local.FirstOrDefault(e =>
+        {
+            var trackedKeyValues = _context.Entry(e).Metadata.FindPrimaryKey()?.Properties
+                .Select(p => _context.Entry(e).Property(p.Name).CurrentValue).ToArray();
+            return trackedKeyValues != null && keyValues.SequenceEqual(trackedKeyValues);
+        });
+
         if (trackedEntity is not null)
         {
-            // If the entity is already tracked, update its state
-            var entry = DbSet.Entry(trackedEntity);
+            // If the entity is already tracked, update its values
+            var entry = _context.Entry(trackedEntity);
             entry.CurrentValues.SetValues(entityToUpdate);
         }
         else

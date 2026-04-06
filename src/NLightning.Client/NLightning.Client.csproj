@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NLightning.Daemon.Contracts\NLightning.Daemon.Contracts.csproj"/>
+    <ProjectReference Include="..\NLightning.Transport.Ipc\NLightning.Transport.Ipc.csproj"/>
+    <ProjectReference Include="..\NLightning.Domain\NLightning.Domain.csproj"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MessagePack" Version="3.1.4"/>
+  </ItemGroup>
+
+</Project>

@@ -44,7 +44,7 @@ public static class DependencyInjection
         services.AddChannelMessageHandlers();
 
         // Add scoped services
-        services.AddScoped<FundingConfirmedHandler>();
+        services.AddScoped<FundingConfirmedMessageHandler>();
 
         return services;
     }

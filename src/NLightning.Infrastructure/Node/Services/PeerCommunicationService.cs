@@ -33,7 +33,7 @@ public class PeerCommunicationService : IPeerCommunicationService
     public event EventHandler<IMessage?>? MessageReceived;
 
     /// <inheritdoc />
-    public event EventHandler? DisconnectEvent;
+    public event EventHandler<Exception?>? DisconnectEvent;
 
     /// <inheritdoc />
     public event EventHandler<Exception>? ExceptionRaised;
@@ -81,7 +81,7 @@ public class PeerCommunicationService : IPeerCommunicationService
             if (!task.IsCanceled && !_isInitialized)
             {
                 RaiseException(
-                    new ConnectionException($"Peer {PeerCompactPubKey} did not send init message after timeout"));
+                    new ConnectionException($"Peer {PeerCompactPubKey} did not send an init message before timeout"));
             }
         });
 
@@ -121,11 +121,35 @@ public class PeerCommunicationService : IPeerCommunicationService
         }
     }
 
-    /// <inheritdoc />
-    public void Disconnect()
+    /// <inheritdoc/>
+    public async Task SendWarningAsync(WarningException we, CancellationToken cancellationToken = default)
     {
         try
         {
+            var message = we.Message;
+            ChannelId? channelId = null;
+            if (we is ChannelWarningException cwe)
+            {
+                message = cwe.PeerMessage ?? we.Message;
+                channelId = cwe.ChannelId;
+            }
+
+            var warningMessage = _messageFactory.CreateWarningMessage(message, channelId);
+            await _messageService.SendMessageAsync(warningMessage, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            RaiseException(new ConnectionException($"Failed to send message to peer {PeerCompactPubKey}", ex));
+        }
+    }
+
+    /// <inheritdoc />
+    public void Disconnect(Exception? exception = null)
+    {
+        try
+        {
+            SendExceptionMessage(exception).GetAwaiter().GetResult();
+
             _ = _cts.CancelAsync();
             _logger.LogTrace("Waiting for ping service to stop for peer {peer}", PeerCompactPubKey);
             _pingPongTcs.Task.Wait(TimeSpan.FromSeconds(5));
@@ -133,8 +157,7 @@ public class PeerCommunicationService : IPeerCommunicationService
         }
         finally
         {
-            _messageService.Dispose();
-            DisconnectEvent?.Invoke(this, EventArgs.Empty);
+            DisconnectEvent?.Invoke(this, exception);
         }
     }
 
@@ -216,51 +239,61 @@ public class PeerCommunicationService : IPeerCommunicationService
         RaiseException(e);
     }
 
+    private Task SendExceptionMessage(Exception? exception)
+    {
+        switch (exception)
+        {
+            case ConnectionException:
+            case null:
+                return Task.CompletedTask;
+            case ErrorException errorException:
+                {
+                    ChannelId? channelId = null;
+                    var message = errorException.Message;
+
+                    if (errorException is ChannelErrorException channelErrorException)
+                    {
+                        channelId = channelErrorException.ChannelId;
+                        if (!string.IsNullOrWhiteSpace(channelErrorException.PeerMessage))
+                            message = channelErrorException.PeerMessage;
+                    }
+
+                    _logger.LogTrace("Sending error message to peer {peer}. ChannelId: {channelId}, Message: {message}",
+                                     PeerCompactPubKey, channelId, message);
+
+                    return _messageService.SendMessageAsync(
+                        new ErrorMessage(new ErrorPayload(channelId, message)));
+                }
+            case WarningException warningException:
+                {
+                    ChannelId? channelId = null;
+                    var message = warningException.Message;
+
+                    if (warningException is ChannelWarningException channelWarningException)
+                    {
+                        channelId = channelWarningException.ChannelId;
+                        if (!string.IsNullOrWhiteSpace(channelWarningException.PeerMessage))
+                            message = channelWarningException.PeerMessage;
+                    }
+
+                    _logger.LogTrace("Sending warning message to peer {peer}. ChannelId: {channelId}, Message: {message}",
+                                     PeerCompactPubKey, channelId, message);
+
+                    return _messageService.SendMessageAsync(
+                        new WarningMessage(new ErrorPayload(channelId, message)));
+                }
+            default:
+                return Task.CompletedTask;
+        }
+    }
+
     private void RaiseException(Exception exception)
     {
         var mustDisconnect = false;
-        if (exception is ErrorException errorException)
-        {
-            ChannelId? channelId = null;
-            var message = errorException.Message;
+        if (exception is ErrorException)
             mustDisconnect = true;
 
-            if (errorException is ChannelErrorException channelErrorException)
-            {
-                channelId = channelErrorException.ChannelId;
-                if (!string.IsNullOrWhiteSpace(channelErrorException.PeerMessage))
-                    message = channelErrorException.PeerMessage;
-            }
-
-            if (errorException is not ConnectionException)
-            {
-                _logger.LogTrace("Sending error message to peer {peer}. ChannelId: {channelId}, Message: {message}",
-                                 PeerCompactPubKey, channelId, message);
-
-                _ = Task.Run(() => _messageService.SendMessageAsync(
-                                 new ErrorMessage(new ErrorPayload(channelId, message))));
-
-                return;
-            }
-        }
-        else if (exception is WarningException warningException)
-        {
-            ChannelId? channelId = null;
-            var message = warningException.Message;
-
-            if (warningException is ChannelWarningException channelWarningException)
-            {
-                channelId = channelWarningException.ChannelId;
-                if (!string.IsNullOrWhiteSpace(channelWarningException.PeerMessage))
-                    message = channelWarningException.PeerMessage;
-            }
-
-            _logger.LogTrace("Sending warning message to peer {peer}. ChannelId: {channelId}, Message: {message}",
-                             PeerCompactPubKey, channelId, message);
-
-            _ = Task.Run(() => _messageService.SendMessageAsync(
-                             new WarningMessage(new ErrorPayload(channelId, message))));
-        }
+        _ = Task.Run(() => SendExceptionMessage(exception));
 
         // Forward the exception to subscribers
         ExceptionRaised?.Invoke(this, exception);
@@ -268,12 +301,21 @@ public class PeerCommunicationService : IPeerCommunicationService
         // Disconnect if not already disconnecting
         if (mustDisconnect && !_cts.IsCancellationRequested)
         {
-            _messageService.OnMessageReceived -= HandleMessageReceived;
-            _messageService.OnExceptionRaised -= HandleExceptionRaised;
-            _pingPongService.DisconnectEvent -= HandleExceptionRaised;
-
-            _logger.LogWarning(exception, "We're disconnecting peer {peer} because of an exception", PeerCompactPubKey);
+            _logger.LogWarning(exception, "We're disconnecting peer {peer} because of an exception",
+                               PeerCompactPubKey);
             Disconnect();
         }
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from events
+        _messageService.OnMessageReceived -= HandleMessageReceived;
+        _messageService.OnExceptionRaised -= HandleExceptionRaised;
+        _pingPongService.DisconnectEvent -= HandleExceptionRaised;
+
+        _cts.Dispose();
+        _messageService.Dispose();
+        _initWaitCancellationTokenSource?.Dispose();
     }
 }

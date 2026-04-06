@@ -1,10 +1,10 @@
-using NLightning.Domain.Protocol.Models;
-
 namespace NLightning.Domain.Channels.Models;
 
 using Bitcoin.Transactions.Outputs;
 using Bitcoin.ValueObjects;
 using Crypto.ValueObjects;
+using Domain.Bitcoin.Wallet.Models;
+using Domain.Protocol.Models;
 using Enums;
 using Money;
 using ValueObjects;
@@ -13,23 +13,24 @@ public class ChannelModel
 {
     #region Base Properties
 
-    public ChannelConfig ChannelConfig { get; }
+    public ChannelConfig ChannelConfig { get; private set; }
     public ChannelId ChannelId { get; private set; }
     public ShortChannelId ShortChannelId { get; set; }
-    public CommitmentNumber CommitmentNumber { get; }
+    public CommitmentNumber? CommitmentNumber { get; private set; }
     public uint FundingCreatedAtBlockHeight { get; set; }
-    public FundingOutputInfo FundingOutput { get; }
+    public FundingOutputInfo? FundingOutput { get; private set; }
     public bool IsInitiator { get; }
     public CompactPubKey RemoteNodeId { get; }
     public ChannelState State { get; private set; }
     public ChannelVersion Version { get; }
+    public WalletAddressModel? ChangeAddress { get; set; }
 
     #endregion
 
     #region Signatures
 
-    public CompactSignature? LastSentSignature { get; }
-    public CompactSignature? LastReceivedSignature { get; }
+    public CompactSignature? LastSentSignature { get; private set; }
+    public CompactSignature? LastReceivedSignature { get; private set; }
 
     #endregion
 
@@ -51,7 +52,7 @@ public class ChannelModel
 
     public ShortChannelId? RemoteAlias { get; set; }
     public LightningMoney RemoteBalance { get; }
-    public ChannelKeySetModel RemoteKeySet { get; }
+    public ChannelKeySetModel? RemoteKeySet { get; private set; }
     public ulong RemoteNextHtlcId { get; }
     public ulong RemoteRevocationNumber { get; }
     public ICollection<Htlc>? RemoteFulfilledHtlcs { get; }
@@ -61,11 +62,11 @@ public class ChannelModel
 
     #endregion
 
-    public ChannelModel(ChannelConfig channelConfig, ChannelId channelId, CommitmentNumber commitmentNumber,
-                        FundingOutputInfo fundingOutput, bool isInitiator, CompactSignature? lastSentSignature,
+    public ChannelModel(ChannelConfig channelConfig, ChannelId channelId, CommitmentNumber? commitmentNumber,
+                        FundingOutputInfo? fundingOutput, bool isInitiator, CompactSignature? lastSentSignature,
                         CompactSignature? lastReceivedSignature, LightningMoney localBalance,
                         ChannelKeySetModel localKeySet, ulong localNextHtlcId, ulong localRevocationNumber,
-                        LightningMoney remoteBalance, ChannelKeySetModel remoteKeySet, ulong remoteNextHtlcId,
+                        LightningMoney remoteBalance, ChannelKeySetModel? remoteKeySet, ulong remoteNextHtlcId,
                         CompactPubKey remoteNodeId, ulong remoteRevocationNumber, ChannelState state,
                         ChannelVersion version, ICollection<Htlc>? localOfferedHtlcs = null,
                         ICollection<Htlc>? localFulfilledHtlcs = null, ICollection<Htlc>? localOldHtlcs = null,
@@ -121,10 +122,49 @@ public class ChannelModel
         ChannelId = newChannelId;
     }
 
+    public void UpdateChannelConfig(ChannelConfig channelConfig)
+    {
+        ChannelConfig = channelConfig;
+    }
+
+    public void AddRemoteKeySet(ChannelKeySetModel remoteKeySet)
+    {
+        if (RemoteKeySet is not null)
+            throw new InvalidOperationException("Remote key set already set");
+
+        RemoteKeySet = remoteKeySet;
+    }
+
+    public void AddCommitmentNumber(CommitmentNumber commitmentNumber)
+    {
+        if (CommitmentNumber is not null)
+            throw new InvalidOperationException("Commitment number already set");
+
+        CommitmentNumber = commitmentNumber;
+    }
+
+    public void AddFundingOutput(FundingOutputInfo fundingOutput)
+    {
+        if (FundingOutput is not null)
+            throw new InvalidOperationException("Funding output already set");
+
+        FundingOutput = fundingOutput;
+    }
+
+    public void UpdateLastSentSignature(CompactSignature lastSentSignature)
+    {
+        LastSentSignature = lastSentSignature;
+    }
+
+    public void UpdateLastReceivedSignature(CompactSignature lastReceivedSignature)
+    {
+        LastReceivedSignature = lastReceivedSignature;
+    }
+
     public ChannelSigningInfo GetSigningInfo()
     {
-        return new ChannelSigningInfo(FundingOutput.TransactionId!.Value, FundingOutput.Index!.Value,
+        return new ChannelSigningInfo(FundingOutput!.TransactionId!.Value, FundingOutput.Index!.Value,
                                       FundingOutput.Amount, LocalKeySet.FundingCompactPubKey,
-                                      RemoteKeySet.FundingCompactPubKey, LocalKeySet.KeyIndex);
+                                      RemoteKeySet!.FundingCompactPubKey, LocalKeySet.KeyIndex);
     }
 }

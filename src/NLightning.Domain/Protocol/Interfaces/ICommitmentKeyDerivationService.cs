@@ -20,13 +20,10 @@ public interface ICommitmentKeyDerivationService
     /// Derives the remote commitment keys based on the provided parameters, including local and remote basepoints,
     /// the remote per-commitment point, and the commitment number.
     /// </summary>
-    /// <param name="localChannelKeyIndex">An index representing the local channel key for deriving remote commitment keys.</param>
     /// <param name="localBasepoints">The set of cryptographic basepoints associated with the local channel.</param>
     /// <param name="remoteBasepoints">The set of cryptographic basepoints associated with the remote channel.</param>
     /// <param name="remotePerCommitmentPoint">The per-commitment point provided by the remote party, used for key derivation.</param>
-    /// <param name="commitmentNumber">A numeric identifier representing the specific commitment.</param>
     /// <returns>A <see cref="CommitmentKeys"/> instance containing the derived keys for the remote commitment.</returns>
-    CommitmentKeys DeriveRemoteCommitmentKeys(uint localChannelKeyIndex, ChannelBasepoints localBasepoints,
-                                              ChannelBasepoints remoteBasepoints,
-                                              CompactPubKey remotePerCommitmentPoint, ulong commitmentNumber);
+    CommitmentKeys DeriveRemoteCommitmentKeys(ChannelBasepoints localBasepoints, ChannelBasepoints remoteBasepoints,
+                                              CompactPubKey remotePerCommitmentPoint);
 }

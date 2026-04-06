@@ -1,13 +1,21 @@
+using System.Security.Cryptography;
+
 namespace NLightning.Infrastructure.Protocol.Factories;
 
 using Crypto.Hashes;
 using Domain.Bitcoin.ValueObjects;
+using Domain.Channels.Constants;
 using Domain.Channels.ValueObjects;
 using Domain.Crypto.ValueObjects;
 using Domain.Protocol.Interfaces;
 
 public class ChannelIdFactory : IChannelIdFactory
 {
+    public ChannelId CreateTemporaryChannelId()
+    {
+        return new ChannelId(RandomNumberGenerator.GetBytes(ChannelConstants.ChannelIdLength));
+    }
+
     public ChannelId CreateV1(TxId fundingTxId, ushort fundingOutputIndex)
     {
         Span<byte> channelId = stackalloc byte[32];

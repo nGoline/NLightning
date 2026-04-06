@@ -26,7 +26,7 @@ public class AcceptChannel1Payload : IChannelMessagePayload
     public LightningMoney DustLimitAmount { get; }
 
     /// <summary>
-    /// max_htlc_value_in_flight_msat is a cap on total value of outstanding HTLCs offered by the remote node, which
+    /// max_htlc_value_in_flight_msat is a cap on the total value of outstanding HTLCs offered by the remote node, which
     /// allows the local node to limit its exposure to HTLCs
     /// </summary>
     public LightningMoney MaxHtlcValueInFlightAmount { get; }
@@ -44,7 +44,7 @@ public class AcceptChannel1Payload : IChannelMessagePayload
 
     /// <summary>
     /// minimum_depth is the number of blocks we consider reasonable to avoid double-spending of the funding transaction.
-    /// In case channel_type includes option_zeroconf this MUST be 0
+    /// In case channel_type includes option_zeroconf, this MUST be 0
     /// </summary>
     public uint MinimumDepth { get; set; }
 

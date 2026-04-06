@@ -1,13 +1,14 @@
 using Microsoft.Extensions.Logging;
 using NBitcoin;
-using NLightning.Domain.Bitcoin.Transactions.Outputs;
-using NLightning.Domain.Channels.ValueObjects;
-using NLightning.Domain.Exceptions;
 using NLightning.Tests.Utils.Vectors;
 
 namespace NLightning.Infrastructure.Bitcoin.Tests.Signers;
 
+using Domain.Bitcoin.Interfaces;
+using Domain.Bitcoin.Transactions.Outputs;
 using Domain.Bitcoin.ValueObjects;
+using Domain.Channels.ValueObjects;
+using Domain.Exceptions;
 using Domain.Node.Options;
 using Domain.Protocol.Interfaces;
 using Infrastructure.Bitcoin.Builders;
@@ -34,6 +35,7 @@ public class LocalLightningSignerTests
         var loggerMock = new Mock<ILogger<LocalLightningSigner>>();
         var nodeOptions = new NodeOptions();
         var secureKeyManagerMock = new Mock<ISecureKeyManager>();
+        var utxoMemoryRepository = new Mock<IUtxoMemoryRepository>();
         var testChannelId = ChannelId.Zero;
         var channelSigningInfo = new ChannelSigningInfo(Bolt3AppendixBVectors.ExpectedTxId.ToBytes(), 0,
                                                         Bolt3AppendixBVectors.FundingSatoshis,
@@ -41,7 +43,8 @@ public class LocalLightningSignerTests
                                                         Bolt3AppendixCVectors.NodeBFundingPubkey.ToBytes(), 0);
 
         var localSigner = new LocalLightningSigner(fundingOutputBuilderMock.Object, keyDerivationServiceMock.Object,
-                                                   loggerMock.Object, nodeOptions, secureKeyManagerMock.Object);
+                                                   loggerMock.Object, nodeOptions, secureKeyManagerMock.Object,
+                                                   utxoMemoryRepository.Object);
         localSigner.RegisterChannel(testChannelId, channelSigningInfo);
 
         var tx = Bolt3AppendixCVectors.ExpectedCommitTx0;
@@ -66,9 +69,11 @@ public class LocalLightningSignerTests
         var loggerMock = new Mock<ILogger<LocalLightningSigner>>();
         var nodeOptions = new NodeOptions();
         var secureKeyManagerMock = new Mock<ISecureKeyManager>();
+        var utxoMemoryRepository = new Mock<IUtxoMemoryRepository>();
 
         var localSigner = new LocalLightningSigner(fundingOutputBuilderMock.Object, keyDerivationServiceMock.Object,
-                                                   loggerMock.Object, nodeOptions, secureKeyManagerMock.Object);
+                                                   loggerMock.Object, nodeOptions, secureKeyManagerMock.Object,
+                                                   utxoMemoryRepository.Object);
 
         var unregisteredChannelId = ChannelId.Zero;
         var tx = Bolt3AppendixCVectors.ExpectedCommitTx0;

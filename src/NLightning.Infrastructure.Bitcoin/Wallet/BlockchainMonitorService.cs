@@ -9,10 +9,13 @@ using NetMQ.Sockets;
 namespace NLightning.Infrastructure.Bitcoin.Wallet;
 
 using Domain.Bitcoin.Events;
+using Domain.Bitcoin.Interfaces;
 using Domain.Bitcoin.Transactions.Models;
 using Domain.Bitcoin.ValueObjects;
+using Domain.Bitcoin.Wallet.Models;
 using Domain.Channels.ValueObjects;
 using Domain.Crypto.ValueObjects;
+using Domain.Money;
 using Domain.Node.Options;
 using Domain.Persistence.Interfaces;
 using Interfaces;
@@ -21,13 +24,14 @@ using Options;
 public class BlockchainMonitorService : IBlockchainMonitor
 {
     private readonly BitcoinOptions _bitcoinOptions;
-    private readonly IBitcoinWallet _bitcoinWallet;
+    private readonly IBitcoinChainService _bitcoinChainService;
     private readonly ILogger<BlockchainMonitorService> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly Network _network;
     private readonly SemaphoreSlim _newBlockSemaphore = new(1, 1);
     private readonly SemaphoreSlim _blockBacklogSemaphore = new(1, 1);
     private readonly ConcurrentDictionary<uint256, WatchedTransactionModel> _watchedTransactions = new();
+    private readonly ConcurrentDictionary<string, WalletAddressModel> _watchedAddresses = new();
     private readonly OrderedDictionary<uint, Block> _blocksToProcess = new();
 
     private BlockchainState _blockchainState = new(0, Hash.Empty, DateTime.UtcNow);
@@ -39,13 +43,16 @@ public class BlockchainMonitorService : IBlockchainMonitor
 
     public event EventHandler<NewBlockEventArgs>? OnNewBlockDetected;
     public event EventHandler<TransactionConfirmedEventArgs>? OnTransactionConfirmed;
+    public event EventHandler<WalletMovementEventArgs>? OnWalletMovementDetected;
 
-    public BlockchainMonitorService(IOptions<BitcoinOptions> bitcoinOptions, IBitcoinWallet bitcoinWallet,
+    public uint LastProcessedBlockHeight => _lastProcessedBlockHeight;
+
+    public BlockchainMonitorService(IOptions<BitcoinOptions> bitcoinOptions, IBitcoinChainService bitcoinChainService,
                                     ILogger<BlockchainMonitorService> logger, IOptions<NodeOptions> nodeOptions,
                                     IServiceProvider serviceProvider)
     {
         _bitcoinOptions = bitcoinOptions.Value;
-        _bitcoinWallet = bitcoinWallet;
+        _bitcoinChainService = bitcoinChainService;
         _logger = logger;
         _serviceProvider = serviceProvider;
         _network = Network.GetNetwork(nodeOptions.Value.BitcoinNetwork) ?? Network.Main;
@@ -60,6 +67,12 @@ public class BlockchainMonitorService : IBlockchainMonitor
 
         // Load pending transactions
         await LoadPendingWatchedTransactionsAsync(uow);
+
+        // Load existing addresses
+        LoadBitcoinAddresses(uow);
+
+        // Load UtxoSet
+        await LoadUtxoSetAsync(uow);
 
         // Get the current state or create a new one if it doesn't exist
         var currentBlockchainState = await uow.BlockchainStateDbRepository.GetStateAsync();
@@ -80,16 +93,19 @@ public class BlockchainMonitorService : IBlockchainMonitor
         }
 
         // Get the current block height from the wallet
-        var currentBlockHeight = await _bitcoinWallet.GetCurrentBlockHeightAsync();
+        var currentBlockHeight = await _bitcoinChainService.GetCurrentBlockHeightAsync();
 
-        // Add the current block to the processing queue
-        var currentBlock = await _bitcoinWallet.GetBlockAsync(_lastProcessedBlockHeight);
-        if (currentBlock is not null)
-            _blocksToProcess[_lastProcessedBlockHeight] = currentBlock;
+        if (currentBlockHeight > _lastProcessedBlockHeight)
+        {
+            // Add the current block to the processing queue
+            var currentBlock = await _bitcoinChainService.GetBlockAsync(_lastProcessedBlockHeight);
+            if (currentBlock is not null)
+                _blocksToProcess[_lastProcessedBlockHeight] = currentBlock;
 
-        // Add missing blocks to the processing queue and process any pending blocks
-        await AddMissingBlocksToProcessAsync(currentBlockHeight);
-        await ProcessPendingBlocksAsync(uow);
+            // Add missing blocks to the processing queue and process any pending blocks
+            await AddMissingBlocksToProcessAsync(currentBlockHeight);
+            await ProcessPendingBlocksAsync(uow);
+        }
 
         await uow.SaveChangesAsync();
 
@@ -105,9 +121,7 @@ public class BlockchainMonitorService : IBlockchainMonitor
     public async Task StopAsync()
     {
         if (_cts is null)
-        {
             throw new InvalidOperationException("Service is not running");
-        }
 
         await _cts.CancelAsync();
 
@@ -126,10 +140,30 @@ public class BlockchainMonitorService : IBlockchainMonitor
         CleanupZmqSockets();
     }
 
+    public async Task PublishAndWatchTransactionAsync(ChannelId channelId, SignedTransaction signedTransaction,
+                                                      uint requiredDepth)
+    {
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation(
+                "Publishing transaction {TxId} for {RequiredDepth} confirmations for channel {channelId}",
+                signedTransaction.TxId, requiredDepth, channelId);
+
+        // Convert the tx
+        var transaction = Transaction.Load(signedTransaction.RawTxBytes, _network);
+
+        // Start watching the tx
+        await WatchTransactionAsync(channelId, signedTransaction.TxId, requiredDepth);
+
+        // Publish the tx
+        await _bitcoinChainService.SendTransactionAsync(transaction);
+    }
+
     public async Task WatchTransactionAsync(ChannelId channelId, TxId txId, uint requiredDepth)
     {
-        _logger.LogInformation("Watching transaction {TxId} for {RequiredDepth} confirmations for channel {channelId}",
-                               txId, requiredDepth, channelId);
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation(
+                "Watching transaction {TxId} for {RequiredDepth} confirmations for channel {channelId}",
+                txId, requiredDepth, channelId);
 
         using var scope = _serviceProvider.CreateScope();
         using var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -142,6 +176,14 @@ public class BlockchainMonitorService : IBlockchainMonitor
         _watchedTransactions[nBitcoinTxId] = watchedTx;
 
         await uow.SaveChangesAsync();
+    }
+
+    public void WatchBitcoinAddress(WalletAddressModel walletAddress)
+    {
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Watching bitcoin address {walletAddress} for deposits", walletAddress);
+
+        _watchedAddresses[walletAddress.Address] = walletAddress;
     }
 
     // public Task WatchForRevocationAsync(TxId commitmentTxId, SignedTransaction penaltyTx)
@@ -157,7 +199,8 @@ public class BlockchainMonitorService : IBlockchainMonitor
 
     private async Task MonitorBlockchainAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting blockchain monitoring loop");
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Starting blockchain monitoring loop");
 
         try
         {
@@ -180,10 +223,10 @@ public class BlockchainMonitorService : IBlockchainMonitor
                                 if (!coinbaseHeight.HasValue)
                                 {
                                     // Get the current height from the wallet
-                                    var currentHeight = await _bitcoinWallet.GetCurrentBlockHeightAsync();
+                                    var currentHeight = await _bitcoinChainService.GetCurrentBlockHeightAsync();
 
                                     // Get the block from the wallet
-                                    var blockAtHeight = await _bitcoinWallet.GetBlockAsync(currentHeight);
+                                    var blockAtHeight = await _bitcoinChainService.GetBlockAsync(currentHeight);
                                     if (blockAtHeight is null)
                                     {
                                         _logger.LogError("Failed to retrieve block at height {Height}", currentHeight);
@@ -224,7 +267,8 @@ public class BlockchainMonitorService : IBlockchainMonitor
         }
         catch (OperationCanceledException)
         {
-            _logger.LogInformation("Blockchain monitoring loop cancelled");
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("Blockchain monitoring loop cancelled");
         }
         catch (Exception ex)
         {
@@ -246,8 +290,9 @@ public class BlockchainMonitorService : IBlockchainMonitor
             // _transactionSocket.Connect($"tcp://{_bitcoinOptions.ZmqHost}:{_bitcoinOptions.ZmqTxPort}");
             // _transactionSocket.Subscribe("rawtx");
 
-            _logger.LogInformation("ZMQ sockets initialized - Block: {BlockPort}, Tx: {TxPort}",
-                                   _bitcoinOptions.ZmqBlockPort, _bitcoinOptions.ZmqTxPort);
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("ZMQ sockets initialized - Block: {BlockPort}, Tx: {TxPort}",
+                                       _bitcoinOptions.ZmqBlockPort, _bitcoinOptions.ZmqTxPort);
         }
         catch (Exception ex)
         {
@@ -309,8 +354,8 @@ public class BlockchainMonitorService : IBlockchainMonitor
                 if (_blocksToProcess.ContainsKey(height))
                     continue;
 
-                // Add missing block to process queue
-                var blockAtHeight = await _bitcoinWallet.GetBlockAsync(height);
+                // Add the missing block to the process queue
+                var blockAtHeight = await _bitcoinChainService.GetBlockAsync(height);
                 if (blockAtHeight is not null)
                 {
                     _blocksToProcess[height] = blockAtHeight;
@@ -332,7 +377,8 @@ public class BlockchainMonitorService : IBlockchainMonitor
 
         try
         {
-            _logger.LogDebug("Processing block at height {blockHeight}: {BlockHash}", currentHeight, blockHash);
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("Processing block at height {blockHeight}: {BlockHash}", currentHeight, blockHash);
 
             // Check for missed blocks first
             await AddMissingBlocksToProcessAsync(currentHeight);
@@ -370,13 +416,18 @@ public class BlockchainMonitorService : IBlockchainMonitor
         {
             var blockHash = block.GetHash();
 
-            _logger.LogDebug("Processing block {Height} with {TxCount} transactions", height, block.Transactions.Count);
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("Processing block {Height} with {TxCount} transactions", height,
+                                 block.Transactions.Count);
 
             // Notify listeners of the new block
             OnNewBlockDetected?.Invoke(this, new NewBlockEventArgs(height, blockHash.ToBytes()));
 
             // Check if watched transactions are included in this block
-            CheckWatchedTransactionsForBlock(block.Transactions, height, uow);
+            CheckBlockForWatchedTransactions(block.Transactions, height, uow);
+
+            // Check for deposits in this block
+            CheckBlockForWalletMovement(block.Transactions, height, uow);
 
             // Update blockchain state
             _blockchainState.UpdateState(blockHash.ToBytes(), height);
@@ -398,9 +449,10 @@ public class BlockchainMonitorService : IBlockchainMonitor
 
     private void ConfirmTransaction(uint blockHeight, IUnitOfWork uow, WatchedTransactionModel watchedTransaction)
     {
-        _logger.LogInformation(
-            "Transaction {TxId} reached required depth of {depth} confirmations at block {blockHeight}",
-            watchedTransaction.TransactionId, watchedTransaction.RequiredDepth, blockHeight);
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation(
+                "Transaction {TxId} reached required depth of {depth} confirmations at block {blockHeight}",
+                watchedTransaction.TransactionId, watchedTransaction.RequiredDepth, blockHeight);
 
         watchedTransaction.MarkAsCompleted();
         uow.WatchedTransactionDbRepository.Update(watchedTransaction);
@@ -410,12 +462,13 @@ public class BlockchainMonitorService : IBlockchainMonitor
         _watchedTransactions.TryRemove(new uint256(watchedTransaction.TransactionId), out _);
     }
 
-    private void CheckWatchedTransactionsForBlock(List<Transaction> blockTransactions, uint blockHeight,
+    private void CheckBlockForWatchedTransactions(List<Transaction> blockTransactions, uint blockHeight,
                                                   IUnitOfWork uow)
     {
-        _logger.LogDebug(
-            "Checking {watchedTransactionCount} watched transactions for block {height} with {TxCount} transactions",
-            _watchedTransactions.Count, blockHeight, blockTransactions.Count);
+        if (_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug(
+                "Checking {watchedTransactionCount} watched transactions for block {height} with {TxCount} transactions",
+                _watchedTransactions.Count, blockHeight, blockTransactions.Count);
 
         ushort index = 0;
         foreach (var transaction in blockTransactions)
@@ -447,13 +500,65 @@ public class BlockchainMonitorService : IBlockchainMonitor
         }
     }
 
+    private void CheckBlockForWalletMovement(List<Transaction> transactions, uint blockHeight, IUnitOfWork uow)
+    {
+        if (_watchedAddresses.IsEmpty)
+            return;
+
+        if (_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Checking {AddressCount} watched addresses for deposits/spends in block {Height}",
+                             _watchedAddresses.Count, blockHeight);
+
+        foreach (var transaction in transactions)
+        {
+            var txId = transaction.GetHash();
+
+            // Check each output for deposits
+            for (var i = 0; i < transaction.Outputs.Count; i++)
+            {
+                var output = transaction.Outputs[i];
+                var destinationAddress = output.ScriptPubKey.GetDestinationAddress(_network);
+                if (destinationAddress == null)
+                    continue;
+
+                if (!_watchedAddresses.TryGetValue(destinationAddress.ToString(), out var watchedAddress))
+                    continue;
+
+                if (_logger.IsEnabled(LogLevel.Information))
+                    _logger.LogInformation(
+                        "Deposit detected: {amount} to address {destinationAddress} in tx {txId} at block {height}",
+                        output.Value, destinationAddress, txId, blockHeight);
+
+                // Save Utxo to the database
+                var utxo = new UtxoModel(txId.ToBytes(), (uint)i, LightningMoney.Satoshis(output.Value.Satoshi),
+                                         blockHeight, watchedAddress);
+                uow.AddUtxo(utxo);
+
+                if (!_watchedAddresses.TryRemove(destinationAddress.ToString(), out _))
+                    _logger.LogError("Unable to remove watched address {DestinationAddress} from the list",
+                                     destinationAddress);
+
+                OnWalletMovementDetected
+                  ?.Invoke(this, new WalletMovementEventArgs(destinationAddress.ToString(),
+                                                             LightningMoney.Satoshis(output.Value.Satoshi),
+                                                             txId.ToBytes(),
+                                                             blockHeight));
+            }
+
+            // Check each input for spent utxos
+            foreach (var input in transaction.Inputs)
+                uow.TrySpendUtxo(new TxId(input.PrevOut.Hash.ToBytes()), input.PrevOut.N);
+        }
+    }
+
     private void CheckWatchedTransactionsDepth(IUnitOfWork uow)
     {
         foreach (var (txId, watchedTransaction) in _watchedTransactions)
         {
             try
             {
-                var confirmations = _lastProcessedBlockHeight - watchedTransaction.FirstSeenAtHeight;
+                // The FirstSeenAtHeight represents 1 confirmation, so we have to add 1
+                var confirmations = _lastProcessedBlockHeight - watchedTransaction.FirstSeenAtHeight + 1;
                 if (confirmations >= watchedTransaction.RequiredDepth)
                     ConfirmTransaction(_lastProcessedBlockHeight, uow, watchedTransaction);
             }
@@ -472,6 +577,31 @@ public class BlockchainMonitorService : IBlockchainMonitor
         foreach (var watchedTransaction in watchedTransactions)
         {
             _watchedTransactions[new uint256(watchedTransaction.TransactionId)] = watchedTransaction;
+        }
+    }
+
+    private void LoadBitcoinAddresses(IUnitOfWork uow)
+    {
+        _logger.LogInformation("Loading bitcoin addresses from database");
+
+        var bitcoinAddresses = uow.WalletAddressesDbRepository.GetAllAddresses();
+        foreach (var bitcoinAddress in bitcoinAddresses)
+        {
+            _watchedAddresses[bitcoinAddress.Address] = bitcoinAddress;
+        }
+    }
+
+    private async Task LoadUtxoSetAsync(IUnitOfWork uow)
+    {
+        _logger.LogInformation("Loading Utxo set");
+
+        var utxoSet = (await uow.UtxoDbRepository.GetUnspentAsync()).ToList();
+        if (utxoSet.Count > 0)
+        {
+            var utxoMemoryRepository = _serviceProvider.GetService<IUtxoMemoryRepository>() ??
+                                       throw new InvalidOperationException(
+                                           $"Error getting required service {nameof(IUtxoMemoryRepository)}");
+            utxoMemoryRepository.Load(utxoSet);
         }
     }
 }

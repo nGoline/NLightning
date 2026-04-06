@@ -58,9 +58,9 @@ public class CommitmentKeyDerivationService : ICommitmentKeyDerivationService
     }
 
     /// <inheritdoc />
-    public CommitmentKeys DeriveRemoteCommitmentKeys(uint localChannelKeyIndex, ChannelBasepoints localBasepoints,
+    public CommitmentKeys DeriveRemoteCommitmentKeys(ChannelBasepoints localBasepoints,
                                                      ChannelBasepoints remoteBasepoints,
-                                                     CompactPubKey remotePerCommitmentPoint, ulong commitmentNumber)
+                                                     CompactPubKey remotePerCommitmentPoint)
     {
         // For their commitment transaction, we use their provided per-commitment point
         // they should provide this via commitment_signed or update messages

@@ -53,7 +53,7 @@ public class MetadataTaggedFieldTests
     public void FromBitReader_CreatesCorrectlyFromBitReader(byte[] expectedMetadata, short bitLength, byte[] bytes)
     {
         // Arrange
-        var bitReader = new BitReader(bytes);
+        var bitReader = new Domain.Utils.BitReader(bytes);
 
         // Act
         var taggedField = MetadataTaggedField.FromBitReader(bitReader, bitLength);
@@ -67,7 +67,7 @@ public class MetadataTaggedFieldTests
     {
         // Arrange
         var buffer = new byte[50];
-        var bitReader = new BitReader(buffer);
+        var bitReader = new Domain.Utils.BitReader(buffer);
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => MetadataTaggedField.FromBitReader(bitReader, 0));

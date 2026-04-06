@@ -16,7 +16,5 @@ public class RevocationWatchEntity
     public DateTime? IncludedAt { get; set; }
 
     // Default constructor for EF Core
-    internal RevocationWatchEntity()
-    {
-    }
+    internal RevocationWatchEntity() { }
 }

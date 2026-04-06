@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Logging;
 
 namespace NLightning.Infrastructure.Repositories.Memory;
 
 using Domain.Channels.Enums;
+using Domain.Channels.Events;
 using Domain.Channels.Interfaces;
 using Domain.Channels.Models;
 using Domain.Channels.ValueObjects;
@@ -11,16 +13,30 @@ using Domain.Crypto.ValueObjects;
 
 public class ChannelMemoryRepository : IChannelMemoryRepository
 {
+    private readonly ILogger<ChannelMemoryRepository> _logger;
     private readonly ConcurrentDictionary<ChannelId, ChannelModel> _channels = [];
     private readonly ConcurrentDictionary<ChannelId, ChannelState> _channelStates = [];
     private readonly ConcurrentDictionary<(CompactPubKey, ChannelId), ChannelModel> _temporaryChannels = [];
     private readonly ConcurrentDictionary<(CompactPubKey, ChannelId), ChannelState> _temporaryChannelStates = [];
 
+    /// <inheritdoc/>
+    public event EventHandler<ChannelUpgradedEventArgs>? OnChannelUpgraded;
+
+    /// <inheritdoc/>
+    public event EventHandler<ChannelUpdatedEventArgs>? OnChannelUpdated;
+
+    public ChannelMemoryRepository(ILogger<ChannelMemoryRepository> logger)
+    {
+        _logger = logger;
+    }
+
+    /// <inheritdoc/>
     public bool TryGetChannel(ChannelId channelId, [MaybeNullWhen(false)] out ChannelModel channel)
     {
         return _channels.TryGetValue(channelId, out channel);
     }
 
+    /// <inheritdoc/>
     public List<ChannelModel> FindChannels(Func<ChannelModel, bool> predicate)
     {
         return _channels
@@ -29,11 +45,13 @@ public class ChannelMemoryRepository : IChannelMemoryRepository
               .ToList();
     }
 
+    /// <inheritdoc/>
     public bool TryGetChannelState(ChannelId channelId, out ChannelState channelState)
     {
         return _channelStates.TryGetValue(channelId, out channelState);
     }
 
+    /// <inheritdoc/>
     public void AddChannel(ChannelModel channel)
     {
         ArgumentNullException.ThrowIfNull(channel);
@@ -44,6 +62,7 @@ public class ChannelMemoryRepository : IChannelMemoryRepository
         _channelStates[channel.ChannelId] = channel.State;
     }
 
+    /// <inheritdoc/>
     public void UpdateChannel(ChannelModel channel)
     {
         ArgumentNullException.ThrowIfNull(channel);
@@ -53,28 +72,32 @@ public class ChannelMemoryRepository : IChannelMemoryRepository
 
         _channels[channel.ChannelId] = channel;
         _channelStates[channel.ChannelId] = channel.State;
+
+        OnChannelUpdated?.Invoke(this, new ChannelUpdatedEventArgs(channel));
     }
 
-    public void RemoveChannel(ChannelId channelId)
+    /// <inheritdoc/>
+    public bool TryRemoveChannel(ChannelId channelId)
     {
-        if (!_channels.TryRemove(channelId, out _))
-            throw new KeyNotFoundException($"Channel with Id {channelId} does not exist.");
-
-        _channelStates.TryRemove(channelId, out _);
+        var removed = _channels.TryRemove(channelId, out _);
+        return removed && _channelStates.TryRemove(channelId, out _);
     }
 
+    /// <inheritdoc/>
     public bool TryGetTemporaryChannel(CompactPubKey compactPubKey, ChannelId channelId,
                                        [MaybeNullWhen(false)] out ChannelModel channel)
     {
         return _temporaryChannels.TryGetValue((compactPubKey, channelId), out channel);
     }
 
+    /// <inheritdoc/>
     public bool TryGetTemporaryChannelState(CompactPubKey compactPubKey, ChannelId channelId,
                                             out ChannelState channelState)
     {
         return _temporaryChannelStates.TryGetValue((compactPubKey, channelId), out channelState);
     }
 
+    /// <inheritdoc/>
     public void AddTemporaryChannel(CompactPubKey compactPubKey, ChannelModel channel)
     {
         if (!_temporaryChannels.TryAdd((compactPubKey, channel.ChannelId), channel))
@@ -84,6 +107,7 @@ public class ChannelMemoryRepository : IChannelMemoryRepository
         _temporaryChannelStates[(compactPubKey, channel.ChannelId)] = channel.State;
     }
 
+    /// <inheritdoc/>
     public void UpdateTemporaryChannel(CompactPubKey compactPubKey, ChannelModel channel)
     {
         if (!_temporaryChannels.ContainsKey((compactPubKey, channel.ChannelId)))
@@ -94,12 +118,22 @@ public class ChannelMemoryRepository : IChannelMemoryRepository
         _temporaryChannelStates[(compactPubKey, channel.ChannelId)] = channel.State;
     }
 
-    public void RemoveTemporaryChannel(CompactPubKey compactPubKey, ChannelId channelId)
+    /// <inheritdoc/>
+    public bool TryRemoveTemporaryChannel(CompactPubKey compactPubKey, ChannelId channelId)
     {
-        if (!_temporaryChannels.TryRemove((compactPubKey, channelId), out _))
-            throw new KeyNotFoundException(
-                $"Temporary channel with Id {channelId} for CompactPubKey {compactPubKey} does not exist.");
+        var removed = _temporaryChannels.TryRemove((compactPubKey, channelId), out _);
+        return removed && _temporaryChannelStates.TryRemove((compactPubKey, channelId), out _);
+    }
 
-        _temporaryChannelStates.TryRemove((compactPubKey, channelId), out _);
+    /// <inheritdoc/>
+    public void UpgradeChannel(ChannelId oldChannelId, ChannelModel tempChannel)
+    {
+        AddChannel(tempChannel);
+        if (!TryRemoveTemporaryChannel(tempChannel.RemoteNodeId, oldChannelId))
+            _logger.LogWarning(
+                "Unable to remove Temporary Channel with Id {oldChannelId} while upgrading Channel {channelId}.",
+                oldChannelId, tempChannel.ChannelId);
+
+        OnChannelUpgraded?.Invoke(this, new ChannelUpgradedEventArgs(oldChannelId, tempChannel.ChannelId));
     }
 }

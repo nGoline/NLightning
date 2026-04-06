@@ -8,9 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq.Protected;
-using NLightning.Domain.Crypto.ValueObjects;
-using NLightning.Domain.Node.Models;
-using NLightning.Infrastructure.Persistence.Contexts;
 using NLightning.Tests.Utils;
 using ServiceStack;
 using ServiceStack.Text;
@@ -24,8 +21,9 @@ using Domain.Bitcoin.Transactions.Interfaces;
 using Domain.Channels.Factories;
 using Domain.Channels.Interfaces;
 using Domain.Crypto.Hashes;
-using Domain.Enums;
+using Domain.Crypto.ValueObjects;
 using Domain.Node.Interfaces;
+using Domain.Node.Models;
 using Domain.Node.Options;
 using Domain.Node.ValueObjects;
 using Domain.Protocol.Constants;
@@ -38,6 +36,7 @@ using Infrastructure.Bitcoin.Builders;
 using Infrastructure.Bitcoin.Options;
 using Infrastructure.Bitcoin.Signers;
 using Infrastructure.Persistence;
+using Infrastructure.Persistence.Contexts;
 using Infrastructure.Repositories;
 using Infrastructure.Serialization;
 using Mock;
@@ -109,11 +108,14 @@ public class AbcNetworkTests : IDisposable
         services.AddSingleton(_secureKeyManager);
         services.AddSingleton<IChannelFactory>(sp =>
         {
+            var channelIdFactory = sp.GetRequiredService<IChannelIdFactory>();
+            var channelOpenValidator = sp.GetRequiredService<IChannelOpenValidator>();
             var feeService = sp.GetRequiredService<IFeeService>();
             var lightningSigner = sp.GetRequiredService<ILightningSigner>();
             var nodeOptions = sp.GetRequiredService<IOptions<NodeOptions>>().Value;
             var sha256 = sp.GetRequiredService<ISha256>();
-            return new ChannelFactory(feeService, lightningSigner, nodeOptions, sha256);
+            return new ChannelFactory(channelIdFactory, channelOpenValidator, feeService, lightningSigner, nodeOptions,
+                                      sha256);
         });
         services.AddSingleton<ICommitmentTransactionModelFactory, CommitmentTransactionModelFactory>();
         services.AddSingleton<ILightningSigner>(serviceProvider =>
@@ -122,10 +124,11 @@ public class AbcNetworkTests : IDisposable
             var keyDerivationService = serviceProvider.GetRequiredService<IKeyDerivationService>();
             var logger = serviceProvider.GetRequiredService<ILogger<LocalLightningSigner>>();
             var nodeOptions = serviceProvider.GetRequiredService<IOptions<NodeOptions>>().Value;
+            var utxoMemoryRepository = serviceProvider.GetRequiredService<IUtxoMemoryRepository>();
 
             // Create the signer with the correct network
             return new LocalLightningSigner(fundingOutputBuilder, keyDerivationService, logger, nodeOptions,
-                                            _secureKeyManager);
+                                            _secureKeyManager, utxoMemoryRepository);
         });
         services.AddApplicationServices();
         services.AddInfrastructureServices();
@@ -141,10 +144,7 @@ public class AbcNetworkTests : IDisposable
                  {
                      options.Features = new FeatureOptions
                      {
-                         ChainHashes = [ChainConstants.Regtest],
-                         DataLossProtect = FeatureSupport.Optional,
-                         StaticRemoteKey = FeatureSupport.Optional,
-                         PaymentSecret = FeatureSupport.Optional
+                         ChainHashes = [ChainConstants.Regtest]
                      };
                      options.ListenAddresses = [$"{IPAddress.Loopback}:{_port}"];
                      options.BitcoinNetwork = BitcoinNetwork.Regtest;

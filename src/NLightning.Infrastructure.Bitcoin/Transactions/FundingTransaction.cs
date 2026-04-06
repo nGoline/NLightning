@@ -48,6 +48,7 @@
 //         AddOutput(FundingOutput);
 //         AddOutput(ChangeOutput);
 //     }
+//
 //     internal FundingTransaction(LightningMoney dustLimitAmount, bool hasAnchorOutput, Network network, PubKey pubkey1,
 //                                 PubKey pubkey2, LightningMoney amountSats, Script redeemScript, Script changeScript,
 //                                 params Coin[] coins)
@@ -100,10 +101,10 @@
 //         var changeIndex = Outputs.IndexOf(ChangeOutput);
 //
 //         FundingOutput.Index = hasChange
-//             ? changeIndex == 0
-//                 ? 1
-//                 : 0
-//             : 0;
+//                                   ? changeIndex == 0
+//                                         ? 1
+//                                         : 0
+//                                   : 0;
 //
 //         if (hasChange)
 //         {
